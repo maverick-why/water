@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>时光酿造所 · 配方设计师</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-primary:#0c0c18; --bg-secondary:#13132a; --bg-card:#1a1a35;
+      --accent:#d4a017; --accent-light:#f0c040; --accent-dim:rgba(212,160,23,.12);
+      --border:rgba(212,160,23,.18); --text-primary:#ededf5; --text-secondary:#9090b8;
+      --text-dim:#505070; --success:#10b981; --warning:#f59e0b; --danger:#ef4444;
+      --blue:#60a5fa; --purple:#a78bfa; --green:#34d399; --glow:0 0 40px rgba(212,160,23,.12);
+    }
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei','Segoe UI',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;}
+
+    /* NAV */
+    .header{background:linear-gradient(135deg,#0c0c18 0%,#1a0c00 50%,#0c0c18 100%);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;backdrop-filter:blur(24px);}
+    .logo{display:flex;align-items:center;gap:12px;}
+    .logo-icon{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent) 0%,#8a5c00 100%);display:flex;align-items:center;justify-content:center;font-size:20px;}
+    .logo-text h1{font-size:17px;font-weight:800;color:var(--accent);letter-spacing:.06em;}
+    .logo-text p{font-size:10px;color:var(--text-secondary);letter-spacing:.1em;}
+    .nav{display:flex;gap:6px;align-items:center;}
+    .nav a{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;color:var(--text-secondary);border:1px solid transparent;transition:all .2s;}
+    .nav a:hover{color:var(--accent);border-color:var(--border);}
+    .nav a.active{color:var(--bg-primary);background:var(--accent);border-color:var(--accent);}
+    .nav a.dim{opacity:.4;pointer-events:none;}
+
+    /* TOAST */
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:24px;font-size:13px;font-weight:600;z-index:9999;transition:all .3s;opacity:0;pointer-events:none;}
+    .toast.show{opacity:1;}
+    .toast.success{background:#10b981;color:#fff;}
+    .toast.error{background:#ef4444;color:#fff;}
+
+    /* MAIN */
+    .main{max-width:1200px;margin:0 auto;padding:24px 20px 60px;}
+
+    /* CARDS */
+    .card{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:22px;margin-bottom:18px;transition:border-color .2s,box-shadow .2s;}
+    .card:hover{border-color:rgba(212,160,23,.35);box-shadow:var(--glow);}
+    .sec-title{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+    .sec-icon{width:32px;height:32px;border-radius:9px;background:var(--accent-dim);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+    .sec-title h2{font-size:15px;font-weight:700;}
+    .sec-title span{font-size:11px;color:var(--text-secondary);margin-left:6px;}
+
+    /* FORM */
+    .fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px;}
+    .fg-group{display:flex;flex-direction:column;gap:5px;}
+    .fg-label{font-size:11px;color:var(--text-secondary);font-weight:600;}
+    .fi{background:var(--bg-secondary);border:1px solid rgba(255,255,255,.09);border-radius:9px;padding:10px 12px;color:var(--text-primary);font-size:16px;font-weight:700;outline:none;width:100%;transition:all .2s;font-family:inherit;}
+    .fi:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(212,160,23,.1);}
+    .fi-unit{font-size:10px;color:var(--text-dim);}
+
+    /* STATS BAR */
+    .stats-bar{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:16px 24px;margin-bottom:18px;display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+    .stat-item{text-align:center;}
+    .stat-val{font-size:26px;font-weight:900;line-height:1;color:var(--text-primary);}
+    .stat-label{font-size:10px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.08em;margin-top:3px;}
+    .stat-ebc{width:28px;height:18px;border-radius:4px;display:inline-block;margin-top:4px;border:1px solid rgba(255,255,255,.1);}
+
+    /* BUTTONS */
+    .btn{padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .2s;font-family:inherit;display:inline-flex;align-items:center;gap:6px;}
+    .btn-primary{background:var(--accent);color:#0c0c18;}
+    .btn-primary:hover{background:var(--accent-light);}
+    .btn-secondary{background:var(--accent-dim);border:1px solid var(--border);color:var(--accent);}
+    .btn-secondary:hover{background:rgba(212,160,23,.2);}
+    .btn-danger{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#ef4444;padding:5px 10px;font-size:12px;}
+    .btn-danger:hover{background:rgba(239,68,68,.2);}
+    .btn-sm{padding:5px 12px;font-size:12px;}
+    .btn-add{padding:7px 16px;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.15);border-radius:8px;color:var(--text-secondary);font-size:12px;cursor:pointer;transition:all .2s;font-family:inherit;width:100%;margin-top:8px;}
+    .btn-add:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
+
+    /* RECIPE LIST */
+    .list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+    .list-header h2{font-size:20px;font-weight:800;}
+    .recipe-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+    .recipe-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:20px;cursor:pointer;transition:all .2s;position:relative;}
+    .recipe-card:hover{border-color:rgba(212,160,23,.4);box-shadow:var(--glow);transform:translateY(-1px);}
+    .rc-style{font-size:11px;color:var(--text-dim);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;}
+    .rc-name{font-size:18px;font-weight:800;margin-bottom:12px;}
+    .rc-stats{display:flex;gap:16px;margin-bottom:14px;}
+    .rc-stat{text-align:center;}
+    .rc-stat .v{font-size:16px;font-weight:800;color:var(--accent);}
+    .rc-stat .l{font-size:9px;color:var(--text-dim);text-transform:uppercase;}
+    .rc-actions{display:flex;gap:8px;}
+    .rc-date{position:absolute;top:14px;right:16px;font-size:10px;color:var(--text-dim);}
+    .empty-state{text-align:center;padding:80px 20px;color:var(--text-dim);}
+    .empty-state .big{font-size:48px;margin-bottom:16px;}
+    .empty-state p{font-size:14px;margin-bottom:24px;}
+
+    /* EDITOR TOP */
+    .editor-top{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+    .recipe-name-input{background:transparent;border:none;border-bottom:2px solid var(--border);color:var(--text-primary);font-size:24px;font-weight:800;outline:none;flex:1;min-width:200px;padding:4px 0;font-family:inherit;transition:border-color .2s;}
+    .recipe-name-input:focus{border-bottom-color:var(--accent);}
+    .style-badge{padding:4px 12px;background:var(--accent-dim);border:1px solid var(--border);border-radius:12px;font-size:11px;color:var(--accent);white-space:nowrap;}
+
+    /* GRAIN TABLE */
+    .brew-table{width:100%;border-collapse:collapse;}
+    .brew-table th{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;padding:6px 8px;text-align:left;border-bottom:1px solid var(--border);}
+    .brew-table td{padding:5px 6px;vertical-align:middle;}
+    .brew-table tr:hover td{background:rgba(255,255,255,.02);}
+    .ti{background:var(--bg-secondary);border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:7px 9px;color:var(--text-primary);font-size:14px;font-weight:600;outline:none;width:100%;transition:border-color .2s;font-family:inherit;}
+    .ti:focus{border-color:var(--accent);}
+    .ti-wide{min-width:160px;}
+    .ti-sm{width:72px;}
+    .ti-xs{width:56px;}
+    .color-dot{width:20px;height:20px;border-radius:5px;border:1px solid rgba(255,255,255,.1);flex-shrink:0;}
+    .pct-cell{font-size:12px;color:var(--text-dim);text-align:right;white-space:nowrap;}
+    .ibu-cell{font-size:12px;color:var(--green);text-align:right;font-weight:700;}
+
+    /* GRIST BAR */
+    .grist-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:14px;}
+    .grist-seg{height:100%;transition:width .4s ease;}
+
+    /* HOP SECTIONS */
+    .hop-section-title{font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.08em;margin:16px 0 8px;display:flex;align-items:center;gap:8px;}
+    .hop-section-title::before{content:'';height:1px;flex:1;background:var(--border);}
+    .hop-type-tag{padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;text-transform:uppercase;}
+    .tag-boil{background:rgba(96,165,250,.15);color:#60a5fa;}
+    .tag-flameout{background:rgba(249,115,22,.15);color:#f97316;}
+    .tag-whirlpool{background:rgba(167,139,250,.15);color:#a78bfa;}
+    .tag-dryhop{background:rgba(52,211,153,.15);color:#34d399;}
+    .dryhop-row{background:rgba(52,211,153,.04);border:1px solid rgba(52,211,153,.12);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:grid;grid-template-columns:1fr 70px 70px 80px 80px 50px 36px;gap:8px;align-items:center;}
+    .dryhop-label{font-size:10px;color:var(--text-dim);margin-bottom:3px;}
+
+    /* YEAST CARD */
+    .yeast-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:14px;align-items:end;}
+    .pitch-display{background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;}
+    .pitch-num{font-size:28px;font-weight:900;color:var(--accent);}
+    .pitch-unit{font-size:11px;color:var(--text-secondary);}
+
+    /* STYLE GRID */
+    .style-scroll{overflow-x:auto;padding-bottom:6px;margin-bottom:14px;}
+    .style-row{display:flex;gap:8px;min-width:max-content;}
+    .style-chip{padding:6px 14px;background:var(--bg-secondary);border:1px solid rgba(255,255,255,.07);border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;}
+    .style-chip:hover{border-color:var(--accent);color:var(--accent);}
+    .style-chip.active{background:var(--accent);color:#0c0c18;border-color:var(--accent);}
+
+    ::-webkit-scrollbar{width:6px;height:6px;}
+    ::-webkit-scrollbar-track{background:var(--bg-primary);}
+    ::-webkit-scrollbar-thumb{background:rgba(212,160,23,.25);border-radius:3px;}
+    footer{text-align:center;padding:30px;font-size:11px;color:var(--text-dim);border-top:1px solid var(--border);}
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">🍺</div>
+    <div class="logo-text">
+      <h1>时光酿造所</h1>
+      <p>SHIGUANG BREWING</p>
+    </div>
+  </div>
+  <nav class="nav">
+    <a href="recipe.html" class="active">📋 配方</a>
+    <a href="ion-control.html">💧 调水</a>
+    <a href="#" class="dim">🍺 酿造日</a>
+    <a href="#" class="dim">📈 发酵</a>
+  </nav>
+</header>
+
+<div class="toast" id="toast"></div>
+
+<!-- ── LIST VIEW ── -->
+<div id="viewList" class="main">
+  <div class="list-header">
+    <h2>我的配方库</h2>
+    <button class="btn btn-primary" onclick="showEditor(null)">＋ 新建配方</button>
+  </div>
+  <div class="recipe-grid" id="recipeGrid">
+    <div class="empty-state"><div class="big">🍺</div><p>还没有配方，点击上方新建吧</p></div>
+  </div>
+</div>
+
+<!-- ── EDITOR VIEW ── -->
+<div id="viewEditor" class="main" style="display:none">
+
+  <!-- Top bar -->
+  <div class="editor-top">
+    <button class="btn btn-secondary btn-sm" onclick="showList()">← 返回</button>
+    <input class="recipe-name-input" id="recipeName" placeholder="输入配方名称..." value="未命名配方"
+           oninput="S.recipe.name=this.value">
+    <span class="style-badge" id="styleBadgeTop">— 未选风格 —</span>
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      <button class="btn btn-secondary" onclick="saveRecipe()">💾 保存配方</button>
+      <button class="btn btn-primary"   onclick="startBrew()">🍺 开始酿造</button>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div class="stats-bar">
+    <div class="stat-item">
+      <div class="stat-val" id="sOG">1.000</div>
+      <div class="stat-label">OG 原麦汁浓度</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val" id="sFG">1.000</div>
+      <div class="stat-label">FG 终止比重</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val" id="sABV">0.0%</div>
+      <div class="stat-label">ABV 酒精度</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val" id="sIBU">0</div>
+      <div class="stat-label">IBU 苦度</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val" id="sEBC">0</div>
+      <div class="stat-label">EBC 颜色</div>
+      <div class="stat-ebc" id="sEBCColor" style="background:#ffe699;margin:0 auto;"></div>
+    </div>
+  </div>
+
+  <!-- Style selector -->
+  <div class="card">
+    <div class="sec-title">
+      <div class="sec-icon">🎯</div>
+      <h2>风格选择 <span>BJCP Style</span></h2>
+    </div>
+    <div class="style-scroll">
+      <div class="style-row" id="styleRow"></div>
+    </div>
+  </div>
+
+  <!-- Volume + Efficiency -->
+  <div class="card">
+    <div class="sec-title">
+      <div class="sec-icon">⚗️</div>
+      <h2>规模设定 <span>Batch Setup</span></h2>
+    </div>
+    <div class="fg">
+      <div class="fg-group">
+        <label class="fg-label">🍺 进罐目标量</label>
+        <input type="number" class="fi" id="eFermenterVol" value="150" min="1"
+               oninput="S.recipe.fermenterVol=+this.value;recalc()">
+        <div class="fi-unit">升 (L)</div>
+      </div>
+      <div class="fg-group">
+        <label class="fg-label">🔥 煮沸蒸发量</label>
+        <input type="number" class="fi" id="eBoilLoss" value="20" min="0"
+               oninput="S.recipe.boilLoss=+this.value;recalc()">
+        <div class="fi-unit">升 (L)</div>
+      </div>
+      <div class="fg-group">
+        <label class="fg-label">💀 综合损耗</label>
+        <input type="number" class="fi" id="eOtherLoss" value="10" min="0"
+               oninput="S.recipe.otherLoss=+this.value;recalc()">
+        <div class="fi-unit">升 (L)</div>
+      </div>
+      <div class="fg-group">
+        <label class="fg-label">⚡ 糖化效率</label>
+        <input type="number" class="fi" id="eEfficiency" value="72" min="1" max="100"
+               oninput="S.recipe.efficiency=+this.value;recalc()">
+        <div class="fi-unit">% · 典型值 68–76%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grain Bill -->
+  <div class="card">
+    <div class="sec-title">
+      <div class="sec-icon">🌾</div>
+      <h2>麦芽单 <span>Grain Bill</span></h2>
+    </div>
+    <table class="brew-table">
+      <thead>
+        <tr>
+          <th style="width:38%">麦芽品种</th>
+          <th style="width:12%">用量 (kg)</th>
+          <th style="width:10%">PPG</th>
+          <th style="width:16%">EBC / 颜色</th>
+          <th style="width:10%">占比</th>
+          <th style="width:14%"></th>
+        </tr>
+      </thead>
+      <tbody id="grainBody"></tbody>
+    </table>
+    <div class="grist-bar" id="gristBar"></div>
+    <button class="btn-add" onclick="addGrain()">＋ 添加麦芽</button>
+    <datalist id="grainList"></datalist>
+  </div>
+
+  <!-- Hop Schedule -->
+  <div class="card">
+    <div class="sec-title">
+      <div class="sec-icon">🌿</div>
+      <h2>酒花单 <span>Hop Schedule</span></h2>
+    </div>
+    <div id="boilHopsSection">
+      <table class="brew-table">
+        <thead>
+          <tr>
+            <th style="width:32%">酒花品种</th>
+            <th style="width:10%">AA%</th>
+            <th style="width:12%">用量 (g)</th>
+            <th style="width:18%">投放时间</th>
+            <th style="width:10%">IBU</th>
+            <th style="width:18%"></th>
+          </tr>
+        </thead>
+        <tbody id="boilHopBody"></tbody>
+      </table>
+      <button class="btn-add" onclick="addHop('boil')" style="margin-top:8px">＋ 添加煮沸/回旋酒花</button>
+    </div>
+
+    <div class="hop-section-title">🌱 干投 Dry Hop</div>
+    <div id="dryHopSection"></div>
+    <button class="btn-add" onclick="addHop('dry_hop')">＋ 添加干投酒花</button>
+    <datalist id="hopList"></datalist>
+  </div>
+
+  <!-- Yeast -->
+  <div class="card">
+    <div class="sec-title">
+      <div class="sec-icon">🧫</div>
+      <h2>酵母 <span>Yeast & Pitch Rate</span></h2>
+    </div>
+    <div class="yeast-grid">
+      <div class="fg-group">
+        <label class="fg-label">酵母名称 / 菌株</label>
+        <input type="text" class="fi" id="eYeastName" list="yeastList" placeholder="例：US-05 American Ale"
+               oninput="applyYeastInput(this.value)">
+        <datalist id="yeastList"></datalist>
+      </div>
+      <div class="fg-group">
+        <label class="fg-label">发酵度 %</label>
+        <input type="number" class="fi" id="eYeastAtt" value="75" min="40" max="98"
+               oninput="S.yeast.attenuation=+this.value;recalc()">
+      </div>
+      <div class="fg-group">
+        <label class="fg-label">发酵温度范围 (°C)</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="number" class="fi ti-xs" id="eYeastMinT" value="18"
+                 oninput="S.yeast.minTemp=+this.value">
+          <span style="color:var(--text-dim)">–</span>
+          <input type="number" class="fi ti-xs" id="eYeastMaxT" value="22"
+                 oninput="S.yeast.maxTemp=+this.value">
+        </div>
+      </div>
+      <div class="pitch-display">
+        <div class="pitch-unit">建议干酵母接种量</div>
+        <div class="pitch-num" id="ePitchAmt">—</div>
+        <div class="pitch-unit">克 (g)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notes -->
+  <div class="card">
+    <div class="sec-title">
+      <div class="sec-icon">📝</div>
+      <h2>备注 <span>Notes</span></h2>
+    </div>
+    <textarea class="fi" rows="4" placeholder="酿造思路、工艺细节、风味目标…"
+              oninput="S.recipe.notes=this.value" id="eNotes"
+              style="resize:vertical;font-size:14px;font-weight:400;line-height:1.6"></textarea>
+  </div>
+
+</div><!-- end editor -->
+
+<footer>时光酿造所 · Shiguang Brewing Co. &nbsp;|&nbsp; 配方设计师 v1.0</footer>
+
+<script>
+// ═══ SUPABASE ═══════════════════════════════════════════════════════════════
+const { createClient } = window.supabase;
+const db = createClient(
+  'https://kbjndsrllqpuaedotdng.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtiam5kc3JsbHFwdWFlZG90ZG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4Mjg2NDAsImV4cCI6MjA4NzQwNDY0MH0.gSdKU54sAAAdDoqEhczuj4TxmcNzghMe9WN84zLOaAY'
+);
+
+// ═══ DATA ════════════════════════════════════════════════════════════════════
+const GRAINS = [
+  // Base
+  {n:'皮尔森麦芽 Pilsner Malt',       ppg:37, ebc:3,   t:'base'},
+  {n:'淡色麦芽 Pale Malt (2-Row)',     ppg:37, ebc:6,   t:'base'},
+  {n:'Maris Otter 淡色麦芽',           ppg:38, ebc:6,   t:'base'},
+  {n:'慕尼黑麦芽 I Munich Malt I',     ppg:35, ebc:15,  t:'base'},
+  {n:'慕尼黑麦芽 II Munich Malt II',   ppg:34, ebc:25,  t:'base'},
+  {n:'维也纳麦芽 Vienna Malt',         ppg:36, ebc:8,   t:'base'},
+  {n:'小麦麦芽 Wheat Malt',            ppg:37, ebc:4,   t:'base'},
+  {n:'黑麦麦芽 Rye Malt',              ppg:36, ebc:8,   t:'base'},
+  // Crystal
+  {n:'Carapils',                        ppg:34, ebc:5,   t:'crystal'},
+  {n:'Crystal 15',                      ppg:33, ebc:30,  t:'crystal'},
+  {n:'Crystal 40',                      ppg:34, ebc:80,  t:'crystal'},
+  {n:'Crystal 60',                      ppg:34, ebc:120, t:'crystal'},
+  {n:'Crystal 80',                      ppg:33, ebc:160, t:'crystal'},
+  {n:'Crystal 120',                     ppg:33, ebc:240, t:'crystal'},
+  {n:'CaraMunich I',                    ppg:34, ebc:80,  t:'crystal'},
+  {n:'CaraMunich II',                   ppg:34, ebc:130, t:'crystal'},
+  {n:'CaraMunich III',                  ppg:34, ebc:160, t:'crystal'},
+  {n:'Special B',                       ppg:31, ebc:300, t:'crystal'},
+  {n:'CaraAroma',                       ppg:31, ebc:300, t:'crystal'},
+  // Roasted
+  {n:'巧克力麦芽 Chocolate Malt',      ppg:28, ebc:900,  t:'roasted'},
+  {n:'烘烤大麦 Roasted Barley',         ppg:25, ebc:1400, t:'roasted'},
+  {n:'黑麦芽 Black Patent Malt',        ppg:25, ebc:1600, t:'roasted'},
+  {n:'Carafa Special I',                ppg:32, ebc:600,  t:'roasted'},
+  {n:'Carafa Special II',               ppg:32, ebc:900,  t:'roasted'},
+  {n:'Carafa Special III',              ppg:32, ebc:1300, t:'roasted'},
+  // Adjunct
+  {n:'燕麦片 Flaked Oats',              ppg:33, ebc:3,   t:'adjunct'},
+  {n:'小麦片 Flaked Wheat',             ppg:35, ebc:3,   t:'adjunct'},
+  {n:'大麦片 Flaked Barley',            ppg:32, ebc:3,   t:'adjunct'},
+  {n:'玉米糖浆 Corn Sugar',             ppg:46, ebc:0,   t:'adjunct'},
+];
+
+const HOPS = [
+  {n:'Magnum',              aa:13  }, {n:'Centennial',   aa:10  },
+  {n:'Cascade',             aa:6   }, {n:'Citra',         aa:12  },
+  {n:'Mosaic',              aa:11.5}, {n:'Simcoe',        aa:13  },
+  {n:'Columbus (CTZ)',      aa:15  }, {n:'Galaxy',         aa:14  },
+  {n:'Amarillo',            aa:9   }, {n:'El Dorado',     aa:15  },
+  {n:'Azacca',              aa:15  }, {n:'Ekuanot',       aa:13  },
+  {n:'Idaho 7',             aa:13  }, {n:'Strata',         aa:13  },
+  {n:'Nelson Sauvin',       aa:12  }, {n:'Motueka',        aa:7   },
+  {n:'Talus',               aa:7   }, {n:'Chinook',        aa:13  },
+  {n:'Saaz',                aa:3.5 }, {n:'Hallertau Mittelfrueh', aa:4},
+  {n:'Tettnang',            aa:4.5 }, {n:'Perle',          aa:8   },
+  {n:'Northern Brewer',     aa:9   }, {n:'Fuggle',          aa:5   },
+  {n:'East Kent Goldings',  aa:5   },
+];
+
+const YEASTS = [
+  {n:'US-05 American Ale',      s:'Fermentis',       att:81, mn:15, mx:24},
+  {n:'S-04 English Ale',        s:'Fermentis',       att:75, mn:15, mx:24},
+  {n:'W-34/70 Lager',           s:'Fermentis',       att:80, mn:9,  mx:15},
+  {n:'S-23 Lager',              s:'Fermentis',       att:82, mn:9,  mx:15},
+  {n:'BE-256 Belgian Ale',      s:'Fermentis',       att:82, mn:15, mx:30},
+  {n:'WB-06 Weizen',            s:'Fermentis',       att:86, mn:18, mx:24},
+  {n:'T-58 Belgian Spice',      s:'Fermentis',       att:76, mn:15, mx:24},
+  {n:'LalBrew New England',     s:'Lallemand',       att:75, mn:19, mx:22},
+  {n:'LalBrew Voss Kveik',      s:'Lallemand',       att:80, mn:25, mx:43},
+  {n:'LalBrew Munich Classic',  s:'Lallemand',       att:77, mn:10, mx:15},
+  {n:'LalBrew Nottingham',      s:'Lallemand',       att:80, mn:14, mx:21},
+  {n:'WY1056 American Ale',     s:'Wyeast',          att:75, mn:16, mx:22},
+  {n:'WY3068 Weihenstephan',    s:'Wyeast',          att:73, mn:18, mx:24},
+  {n:'WLP001 California Ale',   s:'White Labs',      att:76, mn:18, mx:22},
+  {n:'WLP002 English Ale',      s:'White Labs',      att:63, mn:18, mx:22},
+];
+
+const STYLES = [
+  {id:'west_coast_ipa', e:'🌊', n:'美式西海岸IPA'},
+  {id:'neipa',          e:'☁️', n:'浑浊IPA'},
+  {id:'czech_pils',     e:'🇨🇿', n:'捷克皮尔森'},
+  {id:'german_helles',  e:'🇩🇪', n:'德式清亮拉格'},
+  {id:'new_world_lager',e:'🌏', n:'新世界拉格'},
+  {id:'hefeweizen',     e:'🍋', n:'德式小麦'},
+  {id:'kolsch',         e:'🏙️', n:'科隆啤酒'},
+  {id:'saison',         e:'🌾', n:'比利时赛松'},
+  {id:'english_bitter', e:'🏴󠁧󠁢󠁥󠁮󠁧󠁿', n:'英式苦啤'},
+  {id:'american_pale',  e:'🇺🇸', n:'美式淡色艾尔'},
+  {id:'dipa',           e:'💪', n:'双料IPA'},
+  {id:'brut_ipa',       e:'🥂', n:'Brut IPA'},
+  {id:'stout',          e:'⬛', n:'爱尔兰世涛'},
+  {id:'milk_stout',     e:'🥛', n:'牛奶世涛'},
+  {id:'porter',         e:'🔷', n:'英式波特'},
+  {id:'munich_dunkel',  e:'🍂', n:'慕尼黑深色拉格'},
+  {id:'vienna_lager',   e:'🇦🇹', n:'维也纳拉格'},
+  {id:'tripel',         e:'✝️', n:'比利时三料'},
+  {id:'dubbel',         e:'🍇', n:'比利时双料'},
+  {id:'scottish_ale',   e:'🏴󠁧󠁢󠁳󠁣󠁴󠁿', n:'苏格兰艾尔'},
+  {id:'wee_heavy',      e:'🥃', n:'苏格兰烈性艾尔'},
+  {id:'barleywine',     e:'👑', n:'大麦酒'},
+  {id:'berliner',       e:'🫧', n:'柏林白啤'},
+  {id:'fruited_sour',   e:'🍓', n:'水果酸啤'},
+  {id:'american_stout', e:'🌑', n:'美式世涛'},
+];
+
+// EBC → color swatch
+function ebcToColor(ebc) {
+  const srm = ebc / 1.97;
+  const t = [[1,'#FFE699'],[2,'#FFD878'],[3,'#FFCA5A'],[4,'#FFBF42'],[5,'#FBB123'],
+             [6,'#F8A600'],[7,'#F39C00'],[8,'#EA8F00'],[10,'#DE7C00'],[12,'#CF6900'],
+             [15,'#BB5100'],[18,'#A63E00'],[22,'#8E2900'],[28,'#7B1A00'],[35,'#701200'],[100,'#330000']];
+  for (const [lim, hex] of t) { if (srm <= lim) return hex; }
+  return '#1A0000';
+}
+
+// ═══ STATE ═══════════════════════════════════════════════════════════════════
+let currentId = null;
+let S = {
+  recipe: { name:'未命名配方', styleId:'', styleName:'', fermenterVol:150, boilLoss:20, otherLoss:10, mashRatio:60, efficiency:72, notes:'' },
+  grains: [],   // {_uid, name, kg, ppg, ebc, type}
+  hops:   [],   // {_uid, name, aa, g, type, time, day, dur, seq}
+  yeast:  { name:'', strain:'', attenuation:75, minTemp:18, maxTemp:22 },
+};
+let _uid = 0;
+const uid = () => ++_uid;
+
+// ═══ CALCULATIONS ════════════════════════════════════════════════════════════
+function totalVol() { return S.recipe.fermenterVol + S.recipe.boilLoss + S.recipe.otherLoss; }
+
+function calcOG() {
+  const gal = totalVol() * 0.264172;
+  if (gal <= 0) return 1;
+  let pts = 0;
+  S.grains.forEach(g => { pts += g.kg * 2.20462 * g.ppg * S.recipe.efficiency / 100; });
+  return 1 + pts / gal / 1000;
+}
+function calcFG(og) { return 1 + (og - 1) * (1 - S.yeast.attenuation / 100); }
+function calcABV(og, fg) { return (og - fg) * 131.25; }
+function calcEBC() {
+  const gal = totalVol() * 0.264172;
+  if (gal <= 0) return 0;
+  let mcu = 0;
+  S.grains.forEach(g => { mcu += (g.kg * 2.20462 * (g.ebc / 1.97)) / gal; });
+  return 1.4922 * Math.pow(Math.max(0.001, mcu), 0.6859) * 1.97;
+}
+function calcIBU(og) {
+  const L = totalVol();
+  if (L <= 0) return 0;
+  let ibu = 0;
+  S.hops.forEach(h => {
+    if (h.type === 'dry_hop') { h._ibu = 0; return; }
+    const t = h.type === 'flameout' ? 0 : h.type === 'whirlpool' ? 10 : (h.time || 0);
+    const bf = 1.65 * Math.pow(0.000125, og - 1);
+    const tf = (1 - Math.exp(-0.04 * t)) / 4.15;
+    h._ibu = h.g * (h.aa / 100) * bf * tf * 1000 / L;
+    ibu += h._ibu;
+  });
+  return ibu;
+}
+function calcPitch() { return Math.round(S.recipe.fermenterVol * 0.75); }
+
+function recalc() {
+  const og = calcOG(), fg = calcFG(og), abv = calcABV(og, fg);
+  const ebc = calcEBC(), ibu = calcIBU(og);
+  document.getElementById('sOG').textContent   = og.toFixed(3);
+  document.getElementById('sFG').textContent   = fg.toFixed(3);
+  document.getElementById('sABV').textContent  = abv.toFixed(1) + '%';
+  document.getElementById('sIBU').textContent  = Math.round(ibu);
+  document.getElementById('sEBC').textContent  = Math.round(ebc);
+  document.getElementById('sEBCColor').style.background = ebcToColor(ebc);
+  document.getElementById('ePitchAmt').textContent = calcPitch();
+  renderGrainRows();
+  renderHopRows();
+  renderGristBar();
+}
+
+// ═══ GRAIN BILL ══════════════════════════════════════════════════════════════
+function addGrain(preset) {
+  const g = preset || { _uid:uid(), name:'', kg:5, ppg:37, ebc:6, type:'base' };
+  if (!g._uid) g._uid = uid();
+  S.grains.push(g);
+  recalc();
+}
+function removeGrain(u) { S.grains = S.grains.filter(g => g._uid !== u); recalc(); }
+function updateGrain(u, field, val) {
+  const g = S.grains.find(g => g._uid === u);
+  if (!g) return;
+  if (field === 'name') {
+    const db = GRAINS.find(x => x.n === val);
+    if (db) { g.ppg = db.ppg; g.ebc = db.ebc; g.type = db.t;
+      const tr = document.querySelector(`tr[data-uid="${u}"]`);
+      if (tr) { tr.querySelector('.g-ppg').value = db.ppg; tr.querySelector('.g-ebc').value = db.ebc; }
+    }
+  }
+  g[field] = (field === 'name') ? val : (+val || 0);
+  recalc();
+}
+function renderGrainRows() {
+  const body = document.getElementById('grainBody');
+  const totalKg = S.grains.reduce((s, g) => s + g.kg, 0);
+  body.innerHTML = S.grains.map(g => {
+    const pct = totalKg > 0 ? ((g.kg / totalKg) * 100).toFixed(1) : '0.0';
+    const color = ebcToColor(g.ebc);
+    return `<tr data-uid="${g._uid}">
+      <td><input type="text" class="ti ti-wide" list="grainList" value="${g.name}"
+            onchange="updateGrain(${g._uid},'name',this.value)"></td>
+      <td><input type="number" class="ti ti-sm" value="${g.kg}" step="0.1" min="0"
+            oninput="updateGrain(${g._uid},'kg',this.value)"></td>
+      <td><input type="number" class="ti ti-sm g-ppg" value="${g.ppg}" step="1" min="0"
+            oninput="updateGrain(${g._uid},'ppg',this.value)"></td>
+      <td><div style="display:flex;align-items:center;gap:6px">
+            <div class="color-dot" style="background:${color}"></div>
+            <input type="number" class="ti ti-sm g-ebc" value="${g.ebc}" step="1" min="0"
+                   oninput="updateGrain(${g._uid},'ebc',this.value)">
+          </div></td>
+      <td class="pct-cell">${pct}%</td>
+      <td><button class="btn btn-danger" onclick="removeGrain(${g._uid})">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+function renderGristBar() {
+  const totalKg = S.grains.reduce((s, g) => s + g.kg, 0);
+  const bar = document.getElementById('gristBar');
+  if (totalKg === 0) { bar.innerHTML = ''; return; }
+  bar.innerHTML = S.grains.map(g => {
+    const w = (g.kg / totalKg * 100).toFixed(2);
+    return `<div class="grist-seg" style="width:${w}%;background:${ebcToColor(g.ebc)}" title="${g.name} ${w}%"></div>`;
+  }).join('');
+}
+
+// ═══ HOP SCHEDULE ════════════════════════════════════════════════════════════
+const TIME_OPTS = [90, 60, 45, 30, 20, 15, 10, 5, 0];
+function addHop(type) {
+  const seq = type === 'dry_hop' ? S.hops.filter(h => h.type === 'dry_hop').length + 1 : 1;
+  S.hops.push({ _uid:uid(), name:'', aa:10, g:0, type, time:60, day:3, dur:4, seq, _ibu:0 });
+  recalc();
+}
+function removeHop(u) { S.hops = S.hops.filter(h => h._uid !== u); recalc(); }
+function updateHop(u, field, val) {
+  const h = S.hops.find(h => h._uid === u);
+  if (!h) return;
+  if (field === 'name') {
+    const hdb = HOPS.find(x => x.n === val);
+    if (hdb) { h.aa = hdb.aa; const tr = document.querySelector(`tr[data-uid="${u}"],div[data-uid="${u}"]`); if (tr) { const aaEl = tr.querySelector('.h-aa'); if(aaEl) aaEl.value = hdb.aa; } }
+  }
+  h[field] = (field === 'name') ? val : (+val || 0);
+  recalc();
+}
+function renderHopRows() {
+  const boilHops = S.hops.filter(h => h.type !== 'dry_hop');
+  const dryHops  = S.hops.filter(h => h.type === 'dry_hop');
+
+  // Boil hops
+  document.getElementById('boilHopBody').innerHTML = boilHops.map(h => {
+    const typeTag = { boil:'tag-boil', flameout:'tag-flameout', whirlpool:'tag-whirlpool' }[h.type] || 'tag-boil';
+    const typeLabel = { boil:'煮沸', flameout:'熄火', whirlpool:'回旋' }[h.type] || '煮沸';
+    const timeSelect = h.type === 'boil'
+      ? `<select class="ti ti-sm" onchange="updateHop(${h._uid},'time',this.value)">
+           ${TIME_OPTS.map(t => `<option value="${t}" ${t===h.time?'selected':''}>${t} min</option>`).join('')}
+         </select>`
+      : `<span class="hop-type-tag ${typeTag}">${typeLabel}</span>`;
+    return `<tr data-uid="${h._uid}">
+      <td><div style="display:flex;align-items:center;gap:6px">
+            <select class="ti ti-sm" style="width:120px" onchange="updateHop(${h._uid},'type',this.value)">
+              <option value="boil"       ${h.type==='boil'?'selected':''}>煮沸</option>
+              <option value="flameout"   ${h.type==='flameout'?'selected':''}>熄火</option>
+              <option value="whirlpool"  ${h.type==='whirlpool'?'selected':''}>回旋</option>
+            </select>
+            <input type="text" class="ti" list="hopList" value="${h.name}" style="flex:1"
+                   onchange="updateHop(${h._uid},'name',this.value)">
+          </div></td>
+      <td><input type="number" class="ti ti-sm h-aa" value="${h.aa}" step="0.5" min="0" max="30"
+                 oninput="updateHop(${h._uid},'aa',this.value)"></td>
+      <td><input type="number" class="ti ti-sm" value="${h.g}" step="5" min="0"
+                 oninput="updateHop(${h._uid},'g',this.value)"></td>
+      <td>${timeSelect}</td>
+      <td class="ibu-cell">${(h._ibu||0).toFixed(1)}</td>
+      <td><button class="btn btn-danger" onclick="removeHop(${h._uid})">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  // Dry hops
+  let drySeq = 1;
+  document.getElementById('dryHopSection').innerHTML = dryHops.map(h => `
+    <div class="dryhop-row" data-uid="${h._uid}">
+      <div>
+        <div class="dryhop-label">酒花品种</div>
+        <input type="text" class="ti" list="hopList" value="${h.name}"
+               onchange="updateHop(${h._uid},'name',this.value)">
+      </div>
+      <div>
+        <div class="dryhop-label">AA%</div>
+        <input type="number" class="ti h-aa" value="${h.aa}" step="0.5" min="0"
+               oninput="updateHop(${h._uid},'aa',this.value)">
+      </div>
+      <div>
+        <div class="dryhop-label">用量 (g)</div>
+        <input type="number" class="ti" value="${h.g}" step="10" min="0"
+               oninput="updateHop(${h._uid},'g',this.value)">
+      </div>
+      <div>
+        <div class="dryhop-label">第几天投 📅</div>
+        <input type="number" class="ti" value="${h.day||3}" min="1"
+               oninput="updateHop(${h._uid},'day',this.value)">
+      </div>
+      <div>
+        <div class="dryhop-label">留置天数 ⏱</div>
+        <input type="number" class="ti" value="${h.dur||4}" min="1"
+               oninput="updateHop(${h._uid},'dur',this.value)">
+      </div>
+      <div style="text-align:center">
+        <div class="dryhop-label">第</div>
+        <div style="font-size:18px;font-weight:800;color:var(--green)">${drySeq++}</div>
+        <div class="dryhop-label">次</div>
+      </div>
+      <button class="btn btn-danger" onclick="removeHop(${h._uid})">✕</button>
+    </div>
+  `).join('');
+}
+
+// ═══ YEAST ════════════════════════════════════════════════════════════════════
+function applyYeastInput(val) {
+  S.yeast.name = val;
+  const y = YEASTS.find(x => x.n === val);
+  if (y) {
+    S.yeast.attenuation = y.att;
+    S.yeast.minTemp = y.mn;
+    S.yeast.maxTemp = y.mx;
+    S.yeast.strain = y.s;
+    document.getElementById('eYeastAtt').value   = y.att;
+    document.getElementById('eYeastMinT').value  = y.mn;
+    document.getElementById('eYeastMaxT').value  = y.mx;
+    recalc();
+  }
+}
+
+// ═══ STYLE GRID ══════════════════════════════════════════════════════════════
+function renderStyles() {
+  document.getElementById('styleRow').innerHTML = STYLES.map(s =>
+    `<div class="style-chip${s.id===S.recipe.styleId?' active':''}" onclick="selectStyle('${s.id}','${s.n}')">
+       ${s.e} ${s.n}
+     </div>`).join('');
+}
+function selectStyle(id, name) {
+  S.recipe.styleId = id; S.recipe.styleName = name;
+  document.getElementById('styleBadgeTop').textContent = name;
+  renderStyles();
+}
+
+// ═══ SUPABASE CRUD ════════════════════════════════════════════════════════════
+async function saveRecipe() {
+  if (!S.recipe.name.trim()) { showToast('请输入配方名称', 'error'); return; }
+  try {
+    const rData = {
+      name: S.recipe.name, style_id: S.recipe.styleId, style_name: S.recipe.styleName,
+      fermenter_vol_l: S.recipe.fermenterVol, boil_loss_l: S.recipe.boilLoss,
+      other_loss_l: S.recipe.otherLoss, mash_ratio: S.recipe.mashRatio,
+      efficiency: S.recipe.efficiency, notes: S.recipe.notes,
+      updated_at: new Date().toISOString(),
+    };
+    let rid = currentId;
+    if (rid) {
+      const { error } = await db.from('recipes').update(rData).eq('id', rid);
+      if (error) throw error;
+    } else {
+      const { data, error } = await db.from('recipes').insert(rData).select().single();
+      if (error) throw error;
+      rid = data.id; currentId = rid;
+      window.history.pushState({}, '', `?id=${rid}`);
+    }
+    // Grains
+    await db.from('recipe_grains').delete().eq('recipe_id', rid);
+    if (S.grains.length) {
+      const { error } = await db.from('recipe_grains').insert(
+        S.grains.map((g, i) => ({ recipe_id:rid, name:g.name, amount_kg:g.kg, ppg:g.ppg, ebc:g.ebc, grain_type:g.type, sort_order:i }))
+      );
+      if (error) throw error;
+    }
+    // Hops
+    await db.from('recipe_hops').delete().eq('recipe_id', rid);
+    if (S.hops.length) {
+      const { error } = await db.from('recipe_hops').insert(
+        S.hops.map((h, i) => ({ recipe_id:rid, name:h.name, alpha_acid:h.aa, amount_g:h.g, addition_type:h.type, time_min:h.time, dry_hop_day:h.day, dry_hop_duration:h.dur, dry_hop_seq:h.seq, sort_order:i }))
+      );
+      if (error) throw error;
+    }
+    // Yeast
+    await db.from('recipe_yeast').delete().eq('recipe_id', rid);
+    if (S.yeast.name) {
+      const { error } = await db.from('recipe_yeast').insert({
+        recipe_id:rid, name:S.yeast.name, strain:S.yeast.strain,
+        attenuation:S.yeast.attenuation, min_temp_c:S.yeast.minTemp, max_temp_c:S.yeast.maxTemp
+      });
+      if (error) throw error;
+    }
+    showToast('✓ 配方已保存', 'success');
+  } catch(e) { showToast('保存失败: ' + e.message, 'error'); }
+}
+
+async function loadRecipeList() {
+  const { data, error } = await db.from('recipes').select('*').order('updated_at', { ascending:false });
+  if (error) { console.error(error); return; }
+  const grid = document.getElementById('recipeGrid');
+  if (!data || data.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><div class="big">🍺</div><p>还没有配方，点击上方新建吧</p></div>`;
+    return;
+  }
+  grid.innerHTML = data.map(r => `
+    <div class="recipe-card" onclick="showEditor('${r.id}')">
+      <div class="rc-date">${new Date(r.updated_at).toLocaleDateString('zh-CN')}</div>
+      <div class="rc-style">${r.style_name || '— 未设定风格 —'}</div>
+      <div class="rc-name">${r.name}</div>
+      <div class="rc-stats">
+        <div class="rc-stat"><div class="v">${r.efficiency || 72}%</div><div class="l">效率</div></div>
+        <div class="rc-stat"><div class="v">${r.fermenter_vol_l}L</div><div class="l">批次量</div></div>
+      </div>
+      <div class="rc-actions">
+        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();showEditor('${r.id}')">✏️ 编辑</button>
+        <button class="btn btn-primary btn-sm"   onclick="event.stopPropagation();createBatch('${r.id}','${r.name}')">🍺 酿造</button>
+        <button class="btn btn-danger btn-sm"    onclick="event.stopPropagation();deleteRecipe('${r.id}')">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+async function loadRecipe(id) {
+  const { data: r }    = await db.from('recipes').select('*').eq('id', id).single();
+  const { data: grains } = await db.from('recipe_grains').select('*').eq('recipe_id', id).order('sort_order');
+  const { data: hops   } = await db.from('recipe_hops').select('*').eq('recipe_id', id).order('sort_order');
+  const { data: yeastArr } = await db.from('recipe_yeast').select('*').eq('recipe_id', id);
+  if (!r) return;
+  currentId = id;
+  S.recipe = { name:r.name, styleId:r.style_id||'', styleName:r.style_name||'', fermenterVol:r.fermenter_vol_l, boilLoss:r.boil_loss_l, otherLoss:r.other_loss_l, mashRatio:r.mash_ratio, efficiency:r.efficiency, notes:r.notes||'' };
+  S.grains = (grains||[]).map(g => ({ _uid:uid(), name:g.name, kg:g.amount_kg, ppg:g.ppg, ebc:g.ebc, type:g.grain_type }));
+  S.hops   = (hops||[]).map(h => ({ _uid:uid(), name:h.name, aa:h.alpha_acid, g:h.amount_g, type:h.addition_type, time:h.time_min, day:h.dry_hop_day, dur:h.dry_hop_duration, seq:h.dry_hop_seq, _ibu:0 }));
+  S.yeast  = yeastArr&&yeastArr[0] ? { name:yeastArr[0].name, strain:yeastArr[0].strain||'', attenuation:yeastArr[0].attenuation, minTemp:yeastArr[0].min_temp_c, maxTemp:yeastArr[0].max_temp_c } : { name:'', strain:'', attenuation:75, minTemp:18, maxTemp:22 };
+  syncEditorFields();
+}
+
+async function deleteRecipe(id) {
+  if (!confirm('确定要删除这个配方吗？')) return;
+  const { error } = await db.from('recipes').delete().eq('id', id);
+  if (error) { showToast('删除失败', 'error'); return; }
+  showToast('已删除', 'success');
+  loadRecipeList();
+}
+
+async function createBatch(recipeId, recipeName) {
+  const { data, error } = await db.from('batches').insert({
+    recipe_id: recipeId,
+    batch_number: 'B-' + Date.now().toString().slice(-5),
+    brew_date: new Date().toISOString().split('T')[0],
+    status: 'brewing'
+  }).select().single();
+  if (error) { showToast('创建批次失败', 'error'); return; }
+  showToast(`✓ 批次 ${data.batch_number} 已创建`, 'success');
+}
+async function startBrew() {
+  if (!currentId) { await saveRecipe(); if (!currentId) return; }
+  await createBatch(currentId, S.recipe.name);
+}
+
+// ═══ NAVIGATION ═══════════════════════════════════════════════════════════════
+function showList() {
+  document.getElementById('viewList').style.display = 'block';
+  document.getElementById('viewEditor').style.display = 'none';
+  currentId = null;
+  window.history.pushState({}, '', 'recipe.html');
+  loadRecipeList();
+}
+
+async function showEditor(id) {
+  document.getElementById('viewList').style.display = 'none';
+  document.getElementById('viewEditor').style.display = 'block';
+  if (id) {
+    await loadRecipe(id);
+  } else {
+    currentId = null;
+    S = { recipe:{name:'未命名配方',styleId:'',styleName:'',fermenterVol:150,boilLoss:20,otherLoss:10,mashRatio:60,efficiency:72,notes:''}, grains:[], hops:[], yeast:{name:'',strain:'',attenuation:75,minTemp:18,maxTemp:22} };
+    syncEditorFields();
+  }
+  renderStyles();
+  recalc();
+}
+
+function syncEditorFields() {
+  document.getElementById('recipeName').value     = S.recipe.name;
+  document.getElementById('eFermenterVol').value  = S.recipe.fermenterVol;
+  document.getElementById('eBoilLoss').value      = S.recipe.boilLoss;
+  document.getElementById('eOtherLoss').value     = S.recipe.otherLoss;
+  document.getElementById('eEfficiency').value    = S.recipe.efficiency;
+  document.getElementById('eYeastName').value     = S.yeast.name;
+  document.getElementById('eYeastAtt').value      = S.yeast.attenuation;
+  document.getElementById('eYeastMinT').value     = S.yeast.minTemp;
+  document.getElementById('eYeastMaxT').value     = S.yeast.maxTemp;
+  document.getElementById('eNotes').value         = S.recipe.notes;
+  document.getElementById('styleBadgeTop').textContent = S.recipe.styleName || '— 未选风格 —';
+}
+
+// ═══ TOAST ════════════════════════════════════════════════════════════════════
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ═══ INIT ══════════════════════════════════════════════════════════════════════
+function init() {
+  // Populate datalists
+  document.getElementById('grainList').innerHTML = GRAINS.map(g => `<option value="${g.n}">`).join('');
+  document.getElementById('hopList').innerHTML   = HOPS.map(h => `<option value="${h.n}">`).join('');
+  document.getElementById('yeastList').innerHTML = YEASTS.map(y => `<option value="${y.n}">`).join('');
+
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+  if (id) { showEditor(id); }
+  else    { showList();     }
+}
+
+init();
+</script>
+</body>
+</html>
