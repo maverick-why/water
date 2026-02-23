@@ -397,9 +397,9 @@
           <div class="form-unit">升 (L) · 最终进发酵罐的麦汁量</div>
         </div>
         <div class="form-group">
-          <label class="form-label">🔥 煮沸蒸发量</label>
-          <input type="number" class="form-input" id="boilLoss" value="20" min="0" max="500">
-          <div class="form-unit">升 (L) · 煮沸过程蒸发损耗</div>
+          <label class="form-label">🔥 煮沸蒸发率</label>
+          <input type="number" class="form-input" id="evapRate" value="10" min="1" max="40" step="0.5">
+          <div class="form-unit">% · 蒸发量 = <span id="boilLossCalc" style="color:var(--accent-light);font-weight:700">17.8</span> L</div>
         </div>
         <div class="form-group">
           <label class="form-label">💀 综合损耗</label>
@@ -407,7 +407,17 @@
           <div class="form-unit">升 (L) · 酒糟吸水 + 管道死角等</div>
         </div>
         <div class="form-group">
-          <label class="form-label">⚖️ 糖化水占比</label>
+          <label class="form-label">⚖️ 谷物总重 &amp; 料水比</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" class="form-input" id="grainKg" placeholder="kg" min="0" max="500" step="0.5" style="flex:1">
+            <span style="color:var(--text-dim);font-size:13px;flex-shrink:0">kg ×</span>
+            <input type="number" class="form-input" id="grainRatio" value="3.5" min="2" max="6" step="0.1" style="flex:1">
+            <span style="color:var(--text-dim);font-size:13px;flex-shrink:0">L/kg</span>
+          </div>
+          <div class="form-unit">糖化水占比 → <span id="mashRatioCalc" style="color:var(--accent-light);font-weight:700">—</span>%（或手动输入↓）</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">⚖️ 糖化水占比（手动覆盖）</label>
           <input type="number" class="form-input" id="mashRatio" value="60" min="20" max="90">
           <div class="form-unit">% · 剩余为洗糟水</div>
         </div>
@@ -710,12 +720,38 @@ const S = {
   styleId:      'west_coast_ipa',
   mode:         'style',
   fermenterVol: 150,
-  boilLoss:     20,
+  evapRate:     10,    // % — default 10%
+  boilLoss:     0,     // computed from evapRate
   otherLoss:    10,
-  mashRatio:    60,
+  grainKg:      0,     // optional: auto-compute mashRatio from grain weight
+  grainRatio:   3.5,   // L/kg — default 1:3.5
+  mashRatio:    60,    // % — overridden by grainKg if > 0
   src: { Ca:0, Mg:0, Cl:0, SO4:0 },
   tgt: { Ca:100, Mg:8, Cl:50, SO4:200 },
 };
+
+// Compute derived volume values and keep S in sync
+function syncVolumes() {
+  // boilLoss from evapRate: solve boilLoss = (fermenter+other+boilLoss) * rate/100
+  // → boilLoss = (fermenter+other) * rate / (100-rate)
+  const rate = Math.min(S.evapRate, 99);
+  S.boilLoss = (S.fermenterVol + S.otherLoss) * rate / (100 - rate);
+
+  const total = S.fermenterVol + S.boilLoss + S.otherLoss;
+
+  // mashRatio from grainKg if provided
+  if (S.grainKg > 0 && total > 0) {
+    const mashVol = S.grainKg * S.grainRatio;
+    S.mashRatio = Math.min(90, Math.max(10, mashVol / total * 100));
+    document.getElementById('mashRatio').value = S.mashRatio.toFixed(1);
+    document.getElementById('mashRatioCalc').textContent = S.mashRatio.toFixed(1);
+  } else {
+    document.getElementById('mashRatioCalc').textContent = '—';
+  }
+
+  // Show computed boilLoss in hint
+  document.getElementById('boilLossCalc').textContent = S.boilLoss.toFixed(1);
+}
 
 function getVolumes() {
   const total    = S.fermenterVol + S.boilLoss + S.otherLoss;
@@ -768,6 +804,7 @@ function setV(id,v) { document.getElementById(id).value = v; }
 function pulse(el)  { el.classList.remove('updated'); void el.offsetWidth; el.classList.add('updated'); }
 
 function updateUI() {
+  syncVolumes();
   const r = calc();
   const total = S.fermenterVol + S.boilLoss + S.otherLoss;
 
@@ -945,10 +982,12 @@ function setSourcePreset(p) {
 }
 
 function bindInputs() {
-  document.getElementById('fermenterVol').addEventListener('input', e => { S.fermenterVol=parseFloat(e.target.value)||1; updateUI(); });
-  document.getElementById('boilLoss').addEventListener('input',     e => { S.boilLoss    =parseFloat(e.target.value)||0; updateUI(); });
-  document.getElementById('otherLoss').addEventListener('input',    e => { S.otherLoss   =parseFloat(e.target.value)||0; updateUI(); });
-  document.getElementById('mashRatio').addEventListener('input',    e => { S.mashRatio   =Math.min(90,Math.max(10,parseFloat(e.target.value)||60)); updateUI(); });
+  document.getElementById('fermenterVol').addEventListener('input', e => { S.fermenterVol=parseFloat(e.target.value)||1;   updateUI(); });
+  document.getElementById('evapRate').addEventListener('input',     e => { S.evapRate    =parseFloat(e.target.value)||10;  updateUI(); });
+  document.getElementById('otherLoss').addEventListener('input',    e => { S.otherLoss   =parseFloat(e.target.value)||0;   updateUI(); });
+  document.getElementById('grainKg').addEventListener('input',      e => { S.grainKg     =parseFloat(e.target.value)||0;   updateUI(); });
+  document.getElementById('grainRatio').addEventListener('input',   e => { S.grainRatio  =parseFloat(e.target.value)||3.5; updateUI(); });
+  document.getElementById('mashRatio').addEventListener('input',    e => { S.grainKg=0; S.mashRatio=Math.min(90,Math.max(10,parseFloat(e.target.value)||60)); updateUI(); });
   ['Ca','Mg','Cl','SO4'].forEach(ion => {
     document.getElementById('src'+ion).addEventListener('input', e => { S.src[ion]=parseFloat(e.target.value)||0; updateUI(); });
     document.getElementById('tgt'+ion).addEventListener('input', e => { if(S.mode==='manual'){S.tgt[ion]=parseFloat(e.target.value)||0; updateUI();} });
