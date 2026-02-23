@@ -420,18 +420,9 @@
           <div class="form-unit">每公斤谷物用 <span id="grainRatioHint" style="color:var(--accent-light);font-weight:700">3.5</span> 升糖化水</div>
         </div>
         <div class="form-group">
-          <label class="form-label">⚖️ 糖化水占比</label>
-          <input type="number" class="form-input" id="mashRatio" value="60" min="20" max="90">
-          <div class="form-unit">% · 剩余为洗糟水</div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">🌾 参考谷物总重</label>
-          <div class="form-input" id="grainKgCalc"
-            style="display:flex;align-items:center;background:var(--bg-secondary);opacity:.85;cursor:default">
-            <span id="grainKgVal" style="font-size:18px;font-weight:800;color:var(--accent-light)">—</span>
-            <span style="margin-left:6px;font-size:13px;color:var(--text-secondary)">kg</span>
-          </div>
-          <div class="form-unit">糖化水量 ÷ <span id="grainRatioHint2" style="color:var(--accent-light);font-weight:700">3.5</span> 算得</div>
+          <label class="form-label">🌾 谷物总重</label>
+          <input type="number" class="form-input" id="grainKg" value="30" min="1" max="5000">
+          <div class="form-unit">kg · 糖化水 = 谷物×<span id="grainRatioHint2" style="color:var(--accent-light);font-weight:700">3.5</span> + 底水</div>
         </div>
       </div>
 
@@ -738,46 +729,43 @@ const S = {
   otherLoss:       10,   // 底水/dead space (L)
   grainAbsorption: 1.0,  // L/kg — grain water retention
   grainRatio:      3.5,  // L/kg — water:grain ratio
-  mashRatio:       60,   // %
+  grainKg:         30,   // kg   — total grain bill
   src: { Ca:0, Mg:0, Cl:0, SO4:0 },
   tgt: { Ca:100, Mg:8, Cl:50, SO4:200 },
 };
 
-// Material balance:
-//   Total water T = mash_water + sparge_water
-//   Pre-boil  = T - grain_absorption  (grain absorbs during mash)
-//   Post-boil = Pre-boil × (1 - E)
-//   Fermenter = Post-boil - dead_space
-// Solving for T:
-//   T = (F + L) / [(1-E) × (1 - M×A/R)]
-// where E=evapRate, M=mashRatio, A=grainAbsorption, R=grainRatio
+// Material balance (correct):
+//   mash_water    = grain_kg × R + 底水
+//   head_runnings = mash_water - grain_kg × A
+//   pre_boil      = F / (1 - E)
+//   sparge        = pre_boil - head_runnings
+//   total         = mash_water + sparge
+// where E=evapRate, A=grainAbsorption, R=grainRatio, F=fermenterVol
 function syncVolumes() {
   const E = Math.min(S.evapRate, 99) / 100;
-  const M = S.mashRatio / 100;
   const A = S.grainAbsorption;
   const R = S.grainRatio;
   const F = S.fermenterVol;
-  const L = S.otherLoss;
+  const L = S.otherLoss;   // 底水 — lauter dead space added to mash
+  const G = S.grainKg;
 
-  const denom = (1 - E) * (1 - M * A / R);
-  const T = denom > 0 ? (F + L) / denom : 0;
+  const mashVol      = G * R + L;
+  const grainAbs     = G * A;
+  const headRunnings = mashVol - grainAbs;
+  const preboilVol   = E < 1 ? F / (1 - E) : F * 2;
+  const spargeVol    = Math.max(0, preboilVol - headRunnings);
+  const evapVol      = preboilVol * E;
+  const T            = mashVol + spargeVol;
 
-  const mashVol    = T * M;
-  const grainKg    = R > 0 ? mashVol / R : 0;
-  const grainAbs   = grainKg * A;
-  const spargeVol  = T - mashVol;
-  const preboilVol = T - grainAbs;
-  const evapVol    = preboilVol * E;
-
-  S.boilLoss  = evapVol;
-  S._total    = T;
-  S._mashVol  = mashVol;
-  S._spargeVol= spargeVol;
-  S._grainKg  = grainKg;
-  S._grainAbs = grainAbs;
+  S.boilLoss   = evapVol;
+  S._total     = T;
+  S._mashVol   = mashVol;
+  S._spargeVol = spargeVol;
+  S._grainKg   = G;
+  S._grainAbs  = grainAbs;
+  S._preboil   = preboilVol;
 
   document.getElementById('boilLossCalc').textContent = evapVol.toFixed(1);
-  document.getElementById('grainKgVal').textContent   = grainKg.toFixed(1);
   document.getElementById('grainRatioHint2').textContent = R;
 }
 
@@ -832,9 +820,8 @@ function pulse(el)  { el.classList.remove('updated'); void el.offsetWidth; el.cl
 function updateUI() {
   syncVolumes();
   const r = calc();
-  const total = S.fermenterVol + S.boilLoss + S.otherLoss;
 
-  set('totalVolNum',   fmt(total));
+  set('totalVolNum',   fmt(S._total));
   set('mashVolNum',    fmt(r.mashVol));
   set('spargeVolNum',  fmt(r.spargeVol));
   set('mashVolGuide',  fmt(r.mashVol) + ' L');
@@ -843,7 +830,7 @@ function updateUI() {
   set('fBoil',      S.boilLoss.toFixed(1));
   set('fGrainAbs',  S._grainAbs ? S._grainAbs.toFixed(1) : '—');
   set('fOther',     S.otherLoss);
-  set('fTotal',     S._total ? S._total.toFixed(1) : total);
+  set('fTotal',     S._total ? S._total.toFixed(1) : '—');
 
   ['gypsum','cacl2','epsom'].forEach(s => {
     set(s+'Total',  fmt(r[s].total));
@@ -1013,8 +1000,8 @@ function bindInputs() {
   document.getElementById('evapRate').addEventListener('input',     e => { S.evapRate    =parseFloat(e.target.value)||10;  updateUI(); });
   document.getElementById('otherLoss').addEventListener('input',    e => { S.otherLoss   =parseFloat(e.target.value)||0;   updateUI(); });
   document.getElementById('grainAbsorption').addEventListener('input', e => { S.grainAbsorption=parseFloat(e.target.value)||0.8; updateUI(); });
-  document.getElementById('grainRatio').addEventListener('input',      e => { S.grainRatio=parseFloat(e.target.value)||3.5; document.getElementById('grainRatioHint').textContent=S.grainRatio; updateUI(); });
-  document.getElementById('mashRatio').addEventListener('input',    e => { S.mashRatio=Math.min(90,Math.max(10,parseFloat(e.target.value)||60)); updateUI(); });
+  document.getElementById('grainRatio').addEventListener('input',  e => { S.grainRatio=parseFloat(e.target.value)||3.5; document.getElementById('grainRatioHint').textContent=S.grainRatio; updateUI(); });
+  document.getElementById('grainKg').addEventListener('input',     e => { S.grainKg=parseFloat(e.target.value)||1; updateUI(); });
   ['Ca','Mg','Cl','SO4'].forEach(ion => {
     document.getElementById('src'+ion).addEventListener('input', e => { S.src[ion]=parseFloat(e.target.value)||0; updateUI(); });
     document.getElementById('tgt'+ion).addEventListener('input', e => { if(S.mode==='manual'){S.tgt[ion]=parseFloat(e.target.value)||0; updateUI();} });
