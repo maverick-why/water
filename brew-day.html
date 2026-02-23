@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>时光酿造所 · 酿造日仪表盘</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-primary:#0c0c18; --bg-secondary:#13132a; --bg-card:#1a1a35;
+      --accent:#d4a017; --accent-light:#f0c040; --accent-dim:rgba(212,160,23,.12);
+      --border:rgba(212,160,23,.18); --text-primary:#ededf5; --text-secondary:#9090b8;
+      --text-dim:#505070; --success:#10b981; --warning:#f59e0b; --danger:#ef4444;
+      --blue:#60a5fa; --purple:#a78bfa; --green:#34d399;
+    }
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei','Segoe UI',sans-serif;
+      background:var(--bg-primary);color:var(--text-primary);min-height:100vh;}
+
+    /* LOADING BAR */
+    .load-bar{height:2px;background:transparent;position:fixed;top:0;left:0;right:0;z-index:999;}
+    .load-fill{height:100%;width:0;background:var(--accent);transition:width .4s;}
+
+    /* HEADER */
+    .header{background:linear-gradient(135deg,#0c0c18 0%,#1a0c00 50%,#0c0c18 100%);
+      border-bottom:1px solid var(--border);padding:14px 24px;
+      display:flex;align-items:center;justify-content:space-between;
+      position:sticky;top:0;z-index:100;backdrop-filter:blur(24px);}
+    .logo{display:flex;align-items:center;gap:10px;}
+    .logo-icon{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#8a5c00);
+      display:flex;align-items:center;justify-content:center;font-size:18px;}
+    .logo-text h1{font-size:15px;font-weight:800;color:var(--accent);}
+    .logo-text p{font-size:10px;color:var(--text-secondary);letter-spacing:.06em;}
+    .nav{display:flex;gap:4px;}
+    .nav a{padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;
+      text-decoration:none;color:var(--text-secondary);border:1px solid transparent;transition:all .2s;}
+    .nav a:hover{color:var(--accent);border-color:var(--border);}
+    .nav a.active{color:var(--bg-primary);background:var(--accent);}
+    .nav a.dim{opacity:.35;pointer-events:none;}
+
+    /* STAGE BAR */
+    .stage-bar{background:var(--bg-secondary);border-bottom:1px solid var(--border);
+      padding:0 16px;display:flex;overflow-x:auto;white-space:nowrap;
+      scrollbar-width:none;}
+    .stage-bar::-webkit-scrollbar{display:none;}
+    .stage-tab{padding:11px 14px;font-size:12px;font-weight:600;cursor:pointer;
+      color:var(--text-dim);border-bottom:2px solid transparent;transition:all .2s;
+      display:flex;align-items:center;gap:5px;flex-shrink:0;user-select:none;}
+    .stage-tab.done{color:var(--success);}
+    .stage-tab.done .snum{background:var(--success);color:#000;}
+    .stage-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+    .stage-tab.active .snum{background:var(--accent);color:#000;}
+    .snum{width:18px;height:18px;border-radius:50%;background:var(--text-dim);color:#000;
+      font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+    /* MAIN */
+    .main{max-width:820px;margin:0 auto;padding:24px 16px 120px;}
+    .panel{display:none;}
+    .panel.active{display:block;}
+
+    /* CARDS */
+    .card{background:var(--bg-card);border:1px solid var(--border);
+      border-radius:16px;padding:20px;margin-bottom:16px;}
+    .card-title{font-size:12px;font-weight:700;color:var(--text-secondary);
+      letter-spacing:.08em;text-transform:uppercase;margin-bottom:16px;
+      display:flex;align-items:center;gap:8px;}
+    .card-title .ico{font-size:15px;}
+
+    /* FORMS */
+    .row{display:grid;gap:12px;margin-bottom:12px;}
+    .row.c1{grid-template-columns:1fr;}
+    .row.c2{grid-template-columns:1fr 1fr;}
+    .row.c3{grid-template-columns:1fr 1fr 1fr;}
+    .field label{display:block;font-size:11px;font-weight:600;
+      color:var(--text-secondary);letter-spacing:.06em;margin-bottom:6px;}
+    .field input,.field select,.field textarea{
+      width:100%;background:var(--bg-secondary);border:1px solid var(--border);
+      border-radius:8px;padding:10px 12px;color:var(--text-primary);font-size:14px;
+      font-family:inherit;transition:border-color .2s;outline:none;}
+    .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
+    .field select option{background:var(--bg-card);}
+    .field textarea{min-height:80px;resize:vertical;}
+    .field input[readonly]{opacity:.55;cursor:default;}
+
+    /* STATS ROW */
+    .stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+    .stat{background:var(--bg-secondary);border:1px solid var(--border);
+      border-radius:10px;padding:10px 14px;flex:1;min-width:72px;}
+    .stat-l{font-size:10px;color:var(--text-dim);font-weight:600;letter-spacing:.06em;}
+    .stat-v{font-size:17px;font-weight:800;color:var(--accent);margin-top:2px;}
+    .stat-u{font-size:10px;color:var(--text-secondary);}
+
+    /* BUTTONS */
+    .btn{padding:10px 22px;border-radius:10px;border:none;cursor:pointer;
+      font-size:14px;font-weight:700;transition:all .2s;font-family:inherit;}
+    .btn-primary{background:var(--accent);color:#000;}
+    .btn-primary:hover{background:var(--accent-light);}
+    .btn-secondary{background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border);}
+    .btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+    .btn-full{width:100%;padding:14px;font-size:15px;border-radius:12px;}
+    .btn:disabled{opacity:.5;cursor:default;}
+
+    /* TIMER */
+    .timer-wrap{text-align:center;padding:20px 0 8px;}
+    .ring-wrap{position:relative;width:200px;height:200px;margin:0 auto;}
+    .ring-svg{transform:rotate(-90deg);}
+    .ring-track{fill:none;stroke:var(--border);stroke-width:8;}
+    .ring-prog{fill:none;stroke:var(--accent);stroke-width:8;stroke-linecap:round;
+      transition:stroke-dashoffset .5s linear;}
+    .ring-inner{position:absolute;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;}
+    .timer-digits{font-size:40px;font-weight:800;letter-spacing:-.02em;
+      font-variant-numeric:tabular-nums;color:var(--accent-light);}
+    .timer-lbl{font-size:11px;color:var(--text-secondary);margin-top:4px;}
+    .timer-ctrls{display:flex;gap:10px;justify-content:center;margin-top:18px;}
+
+    /* Boil active state */
+    .boil-on .ring-prog{stroke:#ff7733;transition:stroke-dashoffset .5s linear;}
+    .boil-on .timer-digits{color:#ffaa55;}
+    @keyframes boilPulse{0%,100%{opacity:1;}50%{opacity:.7;}}
+    .boil-on .ring-wrap{animation:boilPulse 3s infinite;}
+
+    /* CHECKLIST */
+    .checklist{list-style:none;}
+    .checklist li{display:flex;align-items:flex-start;gap:10px;
+      padding:10px 0;border-bottom:1px solid var(--border);}
+    .checklist li:last-child{border-bottom:none;}
+    .ckbox{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);flex-shrink:0;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;
+      transition:all .2s;margin-top:1px;font-size:12px;font-weight:700;}
+    .ckbox.on{background:var(--success);border-color:var(--success);color:#fff;}
+    .ck-text{flex:1;font-size:13px;line-height:1.5;}
+    .ck-sub{font-size:11px;color:var(--text-secondary);margin-top:2px;}
+
+    /* HOP GRID */
+    .hop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+    .hop-card{background:var(--bg-secondary);border:2px solid var(--border);
+      border-radius:12px;padding:14px;transition:all .3s;cursor:default;}
+    .hop-card.alert{border-color:var(--warning);background:rgba(245,158,11,.1);
+      animation:hopAlert 1.5s infinite;}
+    .hop-card.added{border-color:var(--success);background:rgba(16,185,129,.07);opacity:.65;}
+    @keyframes hopAlert{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0);}
+      50%{box-shadow:0 0 0 10px rgba(245,158,11,.2);}}
+    .hc-time{font-size:20px;font-weight:800;color:var(--accent);margin-bottom:6px;}
+    .hc-name{font-size:13px;font-weight:700;margin-bottom:3px;}
+    .hc-detail{font-size:11px;color:var(--text-secondary);}
+    .hc-btn{width:100%;padding:7px;border-radius:7px;border:none;cursor:pointer;
+      font-size:12px;font-weight:700;margin-top:10px;transition:all .2s;font-family:inherit;}
+    .hc-btn.pending{background:rgba(212,160,23,.15);color:var(--accent);}
+    .hc-btn.done{background:rgba(16,185,129,.18);color:var(--success);}
+    .hc-btn.alert-btn{background:var(--warning);color:#000;}
+
+    /* pH BADGE */
+    .ph-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;
+      border-radius:7px;font-size:12px;font-weight:700;margin-top:auto;}
+    .ph-ok{background:rgba(16,185,129,.15);color:var(--success);border:1px solid rgba(16,185,129,.3);}
+    .ph-warn{background:rgba(245,158,11,.15);color:var(--warning);border:1px solid rgba(245,158,11,.3);}
+    .ph-bad{background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.3);}
+
+    /* IODINE */
+    .iodine-pair{display:flex;gap:10px;margin-top:12px;}
+    .iodine-opt{flex:1;padding:14px;border-radius:10px;border:2px solid var(--border);
+      cursor:pointer;font-size:13px;font-weight:700;text-align:center;transition:all .2s;background:none;font-family:inherit;}
+    .iodine-opt.pass.sel{border-color:var(--success);background:rgba(16,185,129,.15);color:var(--success);}
+    .iodine-opt.fail.sel{border-color:var(--danger);background:rgba(239,68,68,.15);color:var(--danger);}
+    .iodine-opt:not(.sel){opacity:.4;}
+
+    /* SPARGE PROGRESS */
+    .sparge-track{background:var(--bg-secondary);border-radius:8px;height:10px;overflow:hidden;margin:8px 0;}
+    .sparge-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--accent));
+      border-radius:8px;transition:width .2s;}
+    input[type=range]{width:100%;accent-color:var(--accent);}
+
+    /* OG DIFF */
+    .og-diff{margin-top:8px;font-size:12px;padding:8px 12px;border-radius:8px;}
+    .og-ok{background:rgba(16,185,129,.1);color:var(--success);}
+    .og-hi{background:rgba(245,158,11,.1);color:var(--warning);}
+    .og-lo{background:rgba(245,158,11,.1);color:var(--warning);}
+
+    /* SUMMARY TABLE */
+    .sum-table{width:100%;border-collapse:collapse;}
+    .sum-table tr td{padding:9px 4px;border-bottom:1px solid var(--border);font-size:13px;}
+    .sum-table tr:last-child td{border-bottom:none;}
+    .sum-table td:first-child{color:var(--text-secondary);width:45%;}
+    .sum-table td:last-child{font-weight:700;color:var(--accent-light);text-align:right;}
+
+    /* STEP NAV */
+    .step-foot{margin-top:24px;padding-top:20px;border-top:1px solid var(--border);}
+
+    /* ALERT BANNER */
+    .alert-banner{position:fixed;bottom:0;left:0;right:0;z-index:300;
+      background:linear-gradient(135deg,#1a0800,#2a1200);
+      border-top:2px solid var(--warning);padding:14px 20px;
+      display:none;align-items:center;gap:14px;
+      box-shadow:0 -8px 40px rgba(245,158,11,.35);}
+    .alert-banner.show{display:flex;animation:bannerUp .3s ease;}
+    @keyframes bannerUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+    .alert-big-ico{font-size:28px;flex-shrink:0;}
+    .alert-info{flex:1;min-width:0;}
+    .alert-title{font-size:14px;font-weight:800;color:var(--warning);}
+    .alert-detail{font-size:12px;color:var(--text-secondary);margin-top:2px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .alert-more{font-size:10px;color:var(--text-dim);margin-top:3px;}
+    .alert-confirm{padding:10px 18px;border-radius:10px;background:var(--warning);
+      color:#000;border:none;cursor:pointer;font-size:13px;font-weight:800;
+      flex-shrink:0;font-family:inherit;}
+
+    /* COMPLETE CARD */
+    .done-card{text-align:center;padding:32px 20px;}
+    .done-ico{font-size:60px;margin-bottom:14px;}
+    .done-title{font-size:22px;font-weight:800;color:var(--accent);margin-bottom:6px;}
+    .done-sub{font-size:13px;color:var(--text-secondary);margin-bottom:20px;}
+
+    /* STRIKE RESULT */
+    .strike-result{text-align:center;padding:14px 0 8px;}
+    .strike-val{font-size:36px;font-weight:800;color:var(--accent-light);}
+    .strike-unit{font-size:13px;color:var(--text-secondary);}
+
+    /* GRAVITY WARNING */
+    .grav-warn{padding:10px 14px;border-radius:8px;background:rgba(245,158,11,.1);
+      border:1px solid rgba(245,158,11,.3);font-size:12px;color:var(--warning);
+      margin-top:8px;display:none;}
+
+    /* RESPONSIVE */
+    @media(max-width:600px){
+      .header{padding:10px 14px;}
+      .main{padding:16px 12px 130px;}
+      .row.c3{grid-template-columns:1fr 1fr;}
+      .row.c2{grid-template-columns:1fr 1fr;}
+      .hop-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));}
+      .timer-digits{font-size:34px;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOADING BAR -->
+<div class="load-bar"><div class="load-fill" id="loadFill"></div></div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">🍺</div>
+    <div class="logo-text">
+      <h1>时光酿造所</h1>
+      <p id="pageSubtitle">酿造日仪表盘</p>
+    </div>
+  </div>
+  <nav class="nav">
+    <a href="recipe.html">📋 配方</a>
+    <a href="index.html">💧 调水</a>
+    <a class="active">🍺 酿造日</a>
+    <a href="fermentation.html" id="ferLink" class="dim">📈 发酵</a>
+  </nav>
+</header>
+
+<!-- STAGE BAR -->
+<div class="stage-bar" id="stageBar"></div>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- ── PANEL 0: 备料检查 ── -->
+  <div class="panel active" id="panel-0">
+    <div class="card">
+      <div class="card-title"><span class="ico">📋</span>载入配方</div>
+      <div class="row c1">
+        <div class="field">
+          <label>选择今日配方</label>
+          <select id="recipeSelect" onchange="onRecipeSelect()">
+            <option value="">— 请选择配方 —</option>
+          </select>
+        </div>
+      </div>
+      <div id="recipeSummary" style="display:none">
+        <div class="stats" id="recipeStats"></div>
+      </div>
+    </div>
+
+    <div class="card" id="checkCard" style="display:none">
+      <div class="card-title"><span class="ico">✅</span>开酿前检查</div>
+      <ul class="checklist" id="prepList"></ul>
+    </div>
+
+    <div class="card" id="strikeCard" style="display:none">
+      <div class="card-title"><span class="ico">🌡️</span>投料水温计算</div>
+      <div class="row c3">
+        <div class="field">
+          <label>糖化目标温度 (°C)</label>
+          <input type="number" id="mashTgt" value="67" min="60" max="72" step="0.5" oninput="calcStrike()">
+        </div>
+        <div class="field">
+          <label>麦芽室温 (°C)</label>
+          <input type="number" id="grainT" value="20" min="10" max="30" oninput="calcStrike()">
+        </div>
+        <div class="field">
+          <label>水粮比 (L/kg)</label>
+          <input type="number" id="wrRatio" value="3.0" min="2" max="5" step="0.1" oninput="calcStrike()">
+        </div>
+      </div>
+      <div class="strike-result">
+        <span class="strike-val" id="strikeVal">—</span>
+        <span class="strike-unit"> °C 建议投料水温</span>
+      </div>
+    </div>
+
+    <div class="step-foot">
+      <button class="btn btn-primary btn-full" onclick="goStage(1)">确认备料完成，开始糖化 →</button>
+    </div>
+  </div>
+
+  <!-- ── PANEL 1: 糖化 ── -->
+  <div class="panel" id="panel-1">
+    <div class="card">
+      <div class="card-title"><span class="ico">⏱️</span>糖化计时
+        <span id="mashDurLabel" style="margin-left:auto;font-size:11px;color:var(--text-dim)">60 分钟</span>
+      </div>
+      <div class="timer-wrap">
+        <div class="ring-wrap" id="mashRingWrap">
+          <svg class="ring-svg" width="200" height="200" viewBox="0 0 200 200">
+            <circle class="ring-track" cx="100" cy="100" r="86"/>
+            <circle class="ring-prog" id="mashRingProg" cx="100" cy="100" r="86"
+              stroke-dasharray="540.35" stroke-dashoffset="0"/>
+          </svg>
+          <div class="ring-inner">
+            <div class="timer-digits" id="mashDigits">60:00</div>
+            <div class="timer-lbl" id="mashLbl">等待开始</div>
+          </div>
+        </div>
+        <div class="timer-ctrls">
+          <button class="btn btn-primary" id="mashToggleBtn" onclick="toggleMash()">▶ 开始</button>
+          <button class="btn btn-secondary" onclick="resetMash()">↺ 重置</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="ico">📝</span>糖化记录</div>
+      <div class="row c2">
+        <div class="field">
+          <label>实际投料水温 (°C)</label>
+          <input type="number" id="strikeActual" placeholder="68.0" step="0.1">
+        </div>
+        <div class="field">
+          <label>实测糖化温度 (°C)</label>
+          <input type="number" id="mashTempActual" placeholder="67.0" step="0.1">
+        </div>
+      </div>
+      <div class="row c2">
+        <div class="field">
+          <label>糖化 pH</label>
+          <input type="number" id="mashPH" placeholder="5.35" min="4.5" max="7" step="0.01" oninput="renderPHBadge()">
+        </div>
+        <div class="field" style="display:flex;flex-direction:column;">
+          <label>&nbsp;</label>
+          <div id="phBadge" class="ph-badge ph-ok">目标 5.2–5.4</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="iodineCard" style="display:none">
+      <div class="card-title"><span class="ico">🔬</span>碘化钾糊化检验</div>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:4px">
+        取少量麦汁于白瓷碟，滴一滴碘液。<br>
+        <strong style="color:var(--success)">澄黄/棕色</strong> → 糊化完全 &nbsp;|&nbsp;
+        <strong style="color:var(--danger)">蓝紫色</strong> → 尚未完成，继续糖化
+      </p>
+      <div class="iodine-pair">
+        <button class="iodine-opt pass sel" id="iodinePas" onclick="setIodine(true)">✓ 通过（黄棕）</button>
+        <button class="iodine-opt fail" id="iodineFai" onclick="setIodine(false)">✗ 未过（蓝紫）</button>
+      </div>
+    </div>
+
+    <div class="step-foot">
+      <button class="btn btn-primary btn-full" onclick="goStage(2)">糖化完成，开始过滤 →</button>
+    </div>
+  </div>
+
+  <!-- ── PANEL 2: 过滤冲槽 ── -->
+  <div class="panel" id="panel-2">
+    <div class="card">
+      <div class="card-title"><span class="ico">🫙</span>过滤 & 冲槽</div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;line-height:1.6">
+        回流（Vorlauf）至麦汁清澈后再开始收集。冲槽水温保持 76–78°C，避免超过 78°C 浸出单宁。
+      </p>
+      <div class="row c2">
+        <div class="field">
+          <label>Vorlauf 状态</label>
+          <select id="vorlaufSel">
+            <option value="0">进行中...</option>
+            <option value="1">✓ 已完成，麦汁清澈</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>冲槽水温 (°C)</label>
+          <input type="number" id="spargeTemp" placeholder="77" step="0.5">
+        </div>
+      </div>
+      <div style="margin-top:4px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary);margin-bottom:4px;">
+          <span>冲槽进度</span><span id="spargePct">0%</span>
+        </div>
+        <div class="sparge-track"><div class="sparge-fill" id="spargeFill" style="width:0%"></div></div>
+        <input type="range" id="spargeRange" min="0" max="100" value="0"
+          oninput="updateSparge(this.value)" style="margin-top:6px">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="ico">📊</span>煮前数据</div>
+      <div class="row c2">
+        <div class="field">
+          <label>预煮沸体积 (L)</label>
+          <input type="number" id="preboilVol" placeholder="185" step="1" oninput="checkPreboilOG()">
+        </div>
+        <div class="field">
+          <label>预煮沸比重</label>
+          <input type="number" id="preboilOG" placeholder="1.048" min="1.010" max="1.120" step="0.001" oninput="checkPreboilOG()">
+        </div>
+      </div>
+      <div class="grav-warn" id="gravWarn"></div>
+    </div>
+
+    <div class="step-foot">
+      <button class="btn btn-primary btn-full" onclick="goStage(3)">过滤完成，开始煮沸 →</button>
+    </div>
+  </div>
+
+  <!-- ── PANEL 3: 煮沸 ── -->
+  <div class="panel" id="panel-3">
+    <div class="card">
+      <div class="card-title"><span class="ico">🔥</span>煮沸计时
+        <span id="boilDurLabel" style="margin-left:auto;font-size:11px;color:var(--text-dim)">60 分钟</span>
+      </div>
+      <div class="timer-wrap" id="boilTimerWrap">
+        <div class="ring-wrap" id="boilRingWrap">
+          <svg class="ring-svg" width="200" height="200" viewBox="0 0 200 200">
+            <circle class="ring-track" cx="100" cy="100" r="86"/>
+            <circle class="ring-prog" id="boilRingProg" cx="100" cy="100" r="86"
+              stroke-dasharray="540.35" stroke-dashoffset="0"/>
+          </svg>
+          <div class="ring-inner">
+            <div class="timer-digits" id="boilDigits">60:00</div>
+            <div class="timer-lbl" id="boilLbl">等待点火</div>
+          </div>
+        </div>
+        <div class="timer-ctrls">
+          <button class="btn btn-primary" id="boilToggleBtn" onclick="toggleBoil()">▶ 点火开始</button>
+          <button class="btn btn-secondary" onclick="resetBoil()">↺ 重置</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="ico">🌿</span>酒花投加计划</div>
+      <div class="hop-grid" id="hopGrid"></div>
+      <p id="noHopsMsg" style="display:none;text-align:center;color:var(--text-dim);padding:20px 0;font-size:13px">
+        无煮沸酒花（仅干投）
+      </p>
+    </div>
+
+    <div class="step-foot">
+      <button class="btn btn-primary btn-full" onclick="goStage(4)">煮沸完成，开始冷却 →</button>
+    </div>
+  </div>
+
+  <!-- ── PANEL 4: 冷却进罐 ── -->
+  <div class="panel" id="panel-4">
+    <div class="card">
+      <div class="card-title"><span class="ico">❄️</span>冷却记录</div>
+      <div class="row c3">
+        <div class="field">
+          <label>目标进罐温度 (°C)</label>
+          <input type="number" id="chillTarget" placeholder="18" step="0.5">
+        </div>
+        <div class="field">
+          <label>实际进罐温度 (°C)</label>
+          <input type="number" id="chillActual" placeholder="18.0" step="0.5">
+        </div>
+        <div class="field">
+          <label>进罐体积 (L)</label>
+          <input type="number" id="ferVol" placeholder="150" step="1">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="ico">🧪</span>进罐比重（实测 OG）</div>
+      <div class="row c2">
+        <div class="field">
+          <label>比重计读数</label>
+          <input type="number" id="actualOG" placeholder="1.056" min="1.010" max="1.120" step="0.001" oninput="checkOGDiff()">
+        </div>
+        <div class="field">
+          <label>配方目标 OG</label>
+          <input type="number" id="targetOGDisplay" readonly>
+        </div>
+      </div>
+      <div id="ogDiff" style="display:none" class="og-diff"></div>
+    </div>
+
+    <div class="step-foot">
+      <button class="btn btn-primary btn-full" onclick="goStage(5)">进罐完成，投酵母 →</button>
+    </div>
+  </div>
+
+  <!-- ── PANEL 5: 投酵完成 ── -->
+  <div class="panel" id="panel-5">
+    <div class="card">
+      <div class="card-title"><span class="ico">🧫</span>酵母投加</div>
+      <div class="row c2">
+        <div class="field">
+          <label>酵母品种</label>
+          <input type="text" id="yeastDisplay" readonly placeholder="—">
+        </div>
+        <div class="field">
+          <label>实际投酵温度 (°C)</label>
+          <input type="number" id="pitchTemp" placeholder="18.0" step="0.5">
+        </div>
+      </div>
+      <div class="row c1">
+        <div class="field">
+          <label>备注（特殊情况、调整说明）</label>
+          <textarea id="brewNotes" placeholder="例：糖化pH偏高，加了乳酸校正..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="ico">📋</span>酿造日数据汇总</div>
+      <table class="sum-table" id="sumTable"></table>
+    </div>
+
+    <div class="card" style="text-align:center;padding:24px 20px">
+      <button class="btn btn-primary btn-full" id="saveBtn" onclick="saveBrewDay()">
+        💾 保存酿造记录，开启发酵追踪
+      </button>
+      <p style="font-size:11px;color:var(--text-dim);margin-top:10px">数据保存至 Supabase，自动创建发酵批次</p>
+    </div>
+  </div>
+
+</main>
+
+<!-- HOP ALERT BANNER -->
+<div class="alert-banner" id="alertBanner">
+  <div class="alert-big-ico">⏰</div>
+  <div class="alert-info">
+    <div class="alert-title" id="alertTitle">现在投入酒花！</div>
+    <div class="alert-detail" id="alertDetail"></div>
+    <div class="alert-more" id="alertMore"></div>
+  </div>
+  <button class="alert-confirm" onclick="confirmHop()">✓ 已投</button>
+</div>
+
+<script>
+const { createClient } = supabase;
+const db = createClient(
+  'https://kbjndsrllqpuaedotdng.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtiam5kc3JsbHFwdWFlZG90ZG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4Mjg2NDAsImV4cCI6MjA4NzQwNDY0MH0.gSdKU54sAAAdDoqEhczuj4TxmcNzghMe9WN84zLOaAY'
+);
+
+// ── CONSTANTS ─────────────────────────────────────────────────────
+const CIRC = 2 * Math.PI * 86; // SVG circle circumference ≈ 540.35
+const STAGES = [
+  { id:0, icon:'🌾', label:'备料' },
+  { id:1, icon:'🌡️', label:'糖化' },
+  { id:2, icon:'🫙', label:'过滤冲槽' },
+  { id:3, icon:'🔥', label:'煮沸' },
+  { id:4, icon:'❄️', label:'冷却进罐' },
+  { id:5, icon:'🧫', label:'投酵完成' },
+];
+
+// ── STATE ─────────────────────────────────────────────────────────
+const S = {
+  stage: 0,
+  done: [],           // completed stage ids
+  recipe: null,
+  grains: [],
+  boilHops: [],       // addition_type: boil / flameout / whirlpool
+  yeast: null,
+  targetOG: null,
+  batchId: null,
+
+  // Mash timer
+  mash: { running:false, elapsed:0, startTime:null, dur:60, iv:null },
+
+  // Boil timer
+  boil: { running:false, elapsed:0, startTime:null, dur:60, iv:null, lastMin:-1 },
+
+  // Hop tracking
+  alertQueue: [],
+  firedAlerts: new Set(),   // hop IDs that have been alerted
+  addedHops: new Set(),     // hop IDs confirmed added
+
+  // Iodine result
+  iodinePass: true,
+};
+
+// ── INIT ─────────────────────────────────────────────────────────
+async function init() {
+  renderStageBar();
+  calcStrike();
+
+  const p = new URLSearchParams(location.search);
+  const batchId = p.get('batch');
+  const recipeId = p.get('recipe');
+
+  progress(30);
+  await loadRecipeList();
+  progress(70);
+
+  if (batchId) {
+    await loadBatch(batchId);
+  } else if (recipeId) {
+    document.getElementById('recipeSelect').value = recipeId;
+    await loadRecipe(recipeId);
+  }
+  progress(100);
+}
+
+// ── STAGE BAR ────────────────────────────────────────────────────
+function renderStageBar() {
+  document.getElementById('stageBar').innerHTML = STAGES.map(s => {
+    const isDone = S.done.includes(s.id);
+    const isActive = s.id === S.stage;
+    const cls = isDone ? 'done' : isActive ? 'active' : '';
+    const num = isDone ? '✓' : s.id + 1;
+    return `<div class="stage-tab ${cls}" onclick="jumpTo(${s.id})">
+      <span class="snum">${num}</span>${s.icon} ${s.label}
+    </div>`;
+  }).join('');
+}
+
+function jumpTo(id) {
+  if (S.done.includes(id) || id === S.stage) activateStage(id);
+}
+
+function activateStage(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`panel-${id}`).classList.add('active');
+  S.stage = id;
+  renderStageBar();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  if (id === 3) renderHopGrid();
+  if (id === 5) renderSummary();
+}
+
+function goStage(id) {
+  if (!S.done.includes(S.stage)) S.done.push(S.stage);
+  activateStage(id);
+}
+
+// ── RECIPE LIST ──────────────────────────────────────────────────
+async function loadRecipeList() {
+  const { data } = await db.from('recipes').select('id,name,style_name').order('updated_at', { ascending: false });
+  if (!data) return;
+  const sel = document.getElementById('recipeSelect');
+  data.forEach(r => {
+    const o = document.createElement('option');
+    o.value = r.id;
+    o.textContent = `${r.name}${r.style_name ? ' · ' + r.style_name : ''}`;
+    sel.appendChild(o);
+  });
+}
+
+async function onRecipeSelect() {
+  const id = document.getElementById('recipeSelect').value;
+  if (id) await loadRecipe(id);
+}
+
+async function loadRecipe(id) {
+  progress(20);
+  const [{ data: recipe }, { data: grains }, { data: hops }, { data: yeast }] = await Promise.all([
+    db.from('recipes').select('*').eq('id', id).single(),
+    db.from('recipe_grains').select('*').eq('recipe_id', id).order('sort_order'),
+    db.from('recipe_hops').select('*').eq('recipe_id', id).order('sort_order'),
+    db.from('recipe_yeast').select('*').eq('recipe_id', id).limit(1),
+  ]);
+
+  if (!recipe) { alert('配方载入失败'); progress(0); return; }
+
+  S.recipe = recipe;
+  S.grains = grains || [];
+  S.boilHops = (hops || [])
+    .filter(h => h.addition_type !== 'dry_hop')
+    .sort((a, b) => (b.time_min || 0) - (a.time_min || 0));
+  S.yeast = (yeast && yeast[0]) || null;
+
+  // Calculate target OG from grain bill
+  S.targetOG = calcTargetOG();
+
+  // UI updates
+  document.getElementById('pageSubtitle').textContent = recipe.name;
+  document.getElementById('recipeSelect').value = id;
+  if (S.targetOG) document.getElementById('targetOGDisplay').value = S.targetOG.toFixed(3);
+  if (S.yeast) document.getElementById('yeastDisplay').value = S.yeast.name || '';
+
+  // Update water/grain ratio from recipe
+  if (recipe.mash_ratio && S.grains.length) {
+    const totalWater = (recipe.fermenter_vol_l || 0) + (recipe.boil_loss_l || 0) + (recipe.other_loss_l || 0);
+    const mashVol = totalWater * (recipe.mash_ratio / 100);
+    const grainKg = S.grains.reduce((a, g) => a + (g.amount_kg || 0), 0);
+    if (grainKg > 0) {
+      document.getElementById('wrRatio').value = (mashVol / grainKg).toFixed(1);
+      calcStrike();
+    }
+  }
+
+  // Boil duration display
+  const boilDur = recipe.boil_time || 60;
+  S.boil.dur = boilDur;
+  document.getElementById('boilDurLabel').textContent = `${boilDur} 分钟`;
+  document.getElementById('boilDigits').textContent = `${boilDur}:00`;
+
+  renderPrepChecklist();
+  renderStats();
+  document.getElementById('recipeSummary').style.display = '';
+  document.getElementById('checkCard').style.display = '';
+  document.getElementById('strikeCard').style.display = '';
+
+  progress(100);
+}
+
+async function loadBatch(batchId) {
+  progress(15);
+  const { data: batch } = await db.from('batches').select('*').eq('id', batchId).single();
+  if (!batch) { alert('批次载入失败'); return; }
+  S.batchId = batchId;
+  const ferLink = document.getElementById('ferLink');
+  ferLink.href = `fermentation.html?batch=${batchId}`;
+  ferLink.classList.remove('dim');
+  await loadRecipe(batch.recipe_id);
+}
+
+// ── CALCULATIONS ─────────────────────────────────────────────────
+function calcTargetOG() {
+  if (!S.recipe || !S.grains.length) return null;
+  const volGal = (S.recipe.fermenter_vol_l || 0) * 0.264172;
+  if (!volGal) return null;
+  let pts = 0;
+  S.grains.forEach(g => {
+    pts += (g.amount_kg || 0) * 2.20462 * (g.ppg || 0) * (S.recipe.efficiency || 75) / 100;
+  });
+  return 1 + pts / volGal / 1000;
+}
+
+function mashVolumeL() {
+  if (!S.recipe) return null;
+  const total = (S.recipe.fermenter_vol_l || 0) + (S.recipe.boil_loss_l || 0) + (S.recipe.other_loss_l || 0);
+  return total * ((S.recipe.mash_ratio || 60) / 100);
+}
+
+function spargeVolumeL() {
+  if (!S.recipe) return null;
+  const total = (S.recipe.fermenter_vol_l || 0) + (S.recipe.boil_loss_l || 0) + (S.recipe.other_loss_l || 0);
+  return total * (1 - (S.recipe.mash_ratio || 60) / 100);
+}
+
+// ── RECIPE STATS DISPLAY ─────────────────────────────────────────
+function renderStats() {
+  const r = S.recipe;
+  const og = S.targetOG ? S.targetOG.toFixed(3) : '—';
+  const mashVol = mashVolumeL();
+  const sparVol = spargeVolumeL();
+  const grainNames = S.grains.map(g => `${g.name} ${g.amount_kg}kg`).join(' / ') || '—';
+  const stats = [
+    { l:'目标OG', v: og, u:'' },
+    { l:'进罐量', v: r.fermenter_vol_l || '—', u:'L' },
+    { l:'糖化水', v: mashVol ? mashVol.toFixed(0) : '—', u:'L' },
+    { l:'冲槽水', v: sparVol ? sparVol.toFixed(0) : '—', u:'L' },
+  ];
+  document.getElementById('recipeStats').innerHTML = stats.map(s =>
+    `<div class="stat">
+      <div class="stat-l">${s.l}</div>
+      <div class="stat-v">${s.v}<span class="stat-u"> ${s.u}</span></div>
+    </div>`
+  ).join('');
+
+  // Also show grain info below stats
+  const infoEl = document.getElementById('recipeStats');
+  // Append grain summary after stats
+  const grainDiv = document.createElement('div');
+  grainDiv.style.cssText = 'width:100%;font-size:11px;color:var(--text-secondary);padding:8px 4px 2px;';
+  grainDiv.textContent = `谷物：${grainNames}`;
+  infoEl.parentElement.appendChild(grainDiv);
+}
+
+// ── PREP CHECKLIST ───────────────────────────────────────────────
+function renderPrepChecklist() {
+  const r = S.recipe;
+  const grainNames = S.grains.map(g => `${g.name} ${g.amount_kg}kg`).join('、') || '—';
+  const boilHopNames = S.boilHops.length
+    ? S.boilHops.map(h => `${h.name} ${h.amount_g}g`).join('、')
+    : '无煮沸酒花';
+  const mashVol = mashVolumeL();
+  const sparVol = spargeVolumeL();
+
+  const items = [
+    { t:'麦芽称量备好', s: grainNames },
+    { t:'酒花分装完毕', s: boilHopNames },
+    { t:'糖化用水备好', s: mashVol ? `${mashVol.toFixed(0)} L，加热至计算投料温度` : '—' },
+    { t:'冲槽用水备好', s: sparVol ? `${sparVol.toFixed(0)} L，目标 76–78°C` : '—' },
+    { t:'糖化桶 / 冷却盘管消毒', s: '' },
+    { t:'发酵桶及附件消毒', s: '' },
+    { t:'酵母准备', s: S.yeast ? (S.yeast.strain || S.yeast.name || '—') : '待确认' },
+    { t:'量器校准（比重计、温度计、pH计）', s: '' },
+  ];
+
+  document.getElementById('prepList').innerHTML = items.map((item, i) => `
+    <li>
+      <div class="ckbox" id="ck${i}" onclick="toggleCk(${i})"></div>
+      <div class="ck-text">
+        ${item.t}
+        ${item.s ? `<div class="ck-sub">${item.s}</div>` : ''}
+      </div>
+    </li>
+  `).join('');
+}
+
+function toggleCk(i) {
+  const el = document.getElementById(`ck${i}`);
+  el.classList.toggle('on');
+  el.textContent = el.classList.contains('on') ? '✓' : '';
+}
+
+// ── STRIKE WATER TEMP ────────────────────────────────────────────
+function calcStrike() {
+  const T = parseFloat(document.getElementById('mashTgt').value) || 67;
+  const Tg = parseFloat(document.getElementById('grainT').value) || 20;
+  const R = parseFloat(document.getElementById('wrRatio').value) || 3;
+  // Palmer formula: Ts = (0.2/R)(T - Tg) + T
+  const Ts = (0.2 / R) * (T - Tg) + T;
+  document.getElementById('strikeVal').textContent = Ts.toFixed(1);
+}
+
+// ── pH BADGE ─────────────────────────────────────────────────────
+function renderPHBadge() {
+  const ph = parseFloat(document.getElementById('mashPH').value);
+  const el = document.getElementById('phBadge');
+  if (!ph) { el.className = 'ph-badge ph-ok'; el.textContent = '目标 5.2–5.4'; return; }
+  if (ph >= 5.1 && ph <= 5.5) {
+    el.className = 'ph-badge ph-ok';
+    el.textContent = `✓ ${ph.toFixed(2)} — 良好`;
+  } else if ((ph >= 4.8 && ph < 5.1) || (ph > 5.5 && ph <= 5.8)) {
+    el.className = 'ph-badge ph-warn';
+    el.textContent = `⚠ ${ph.toFixed(2)} — 偏${ph < 5.1 ? '酸' : '碱'}`;
+  } else {
+    el.className = 'ph-badge ph-bad';
+    el.textContent = `✗ ${ph.toFixed(2)} — 超出范围`;
+  }
+}
+
+// ── MASH TIMER ───────────────────────────────────────────────────
+function toggleMash() {
+  S.mash.running ? pauseMash() : startMash();
+}
+
+function startMash() {
+  S.mash.running = true;
+  S.mash.startTime = Date.now() - S.mash.elapsed * 1000;
+  document.getElementById('mashToggleBtn').textContent = '⏸ 暂停';
+  document.getElementById('mashLbl').textContent = '糖化中...';
+  S.mash.iv = setInterval(mashTick, 500);
+}
+
+function pauseMash() {
+  S.mash.running = false;
+  clearInterval(S.mash.iv);
+  document.getElementById('mashToggleBtn').textContent = '▶ 继续';
+  document.getElementById('mashLbl').textContent = '已暂停';
+}
+
+function resetMash() {
+  pauseMash();
+  S.mash.elapsed = 0;
+  document.getElementById('mashToggleBtn').textContent = '▶ 开始';
+  document.getElementById('mashDigits').textContent = `${S.mash.dur}:00`;
+  document.getElementById('mashLbl').textContent = '等待开始';
+  document.getElementById('mashRingProg').style.strokeDashoffset = '0';
+  document.getElementById('iodineCard').style.display = 'none';
+}
+
+function mashTick() {
+  S.mash.elapsed = Math.floor((Date.now() - S.mash.startTime) / 1000);
+  const total = S.mash.dur * 60;
+  const remaining = total - S.mash.elapsed;
+
+  if (remaining <= 0) {
+    clearInterval(S.mash.iv);
+    S.mash.running = false;
+    document.getElementById('mashDigits').textContent = '完成！';
+    document.getElementById('mashLbl').textContent = '糖化时间到 — 请做碘检';
+    document.getElementById('mashToggleBtn').textContent = '▶ 开始';
+    document.getElementById('mashRingProg').style.strokeDashoffset = CIRC.toFixed(2);
+    document.getElementById('iodineCard').style.display = '';
+    beep(660, 0.4); setTimeout(() => beep(880, 0.5), 300); setTimeout(() => beep(1100, 0.5), 600);
+    return;
+  }
+
+  setTimer('mashDigits', 'mashRingProg', remaining, total);
+
+  // 5-min warning
+  if (remaining === 5 * 60) {
+    beep(660, 0.3);
+    document.getElementById('mashLbl').textContent = '⚠ 还剩 5 分钟';
+  }
+  // Show iodine card at 2 min
+  if (remaining <= 2 * 60 && document.getElementById('iodineCard').style.display === 'none') {
+    document.getElementById('iodineCard').style.display = '';
+  }
+}
+
+// ── BOIL TIMER ───────────────────────────────────────────────────
+function toggleBoil() {
+  S.boil.running ? pauseBoil() : startBoil();
+}
+
+function startBoil() {
+  S.boil.running = true;
+  S.boil.startTime = Date.now() - S.boil.elapsed * 1000;
+  document.getElementById('boilToggleBtn').textContent = '⏸ 暂停';
+  document.getElementById('boilLbl').textContent = '煮沸中...';
+  document.getElementById('boilRingWrap').classList.add('boil-on');
+
+  // Fire hops added at boil start (time_min === boil duration)
+  S.boilHops.forEach(h => {
+    if (h.time_min === S.boil.dur && !S.firedAlerts.has(h.id)) {
+      S.firedAlerts.add(h.id);
+      queueHopAlert(h);
+    }
+  });
+
+  S.boil.iv = setInterval(boilTick, 500);
+}
+
+function pauseBoil() {
+  S.boil.running = false;
+  clearInterval(S.boil.iv);
+  document.getElementById('boilToggleBtn').textContent = '▶ 继续';
+  document.getElementById('boilLbl').textContent = '已暂停';
+  document.getElementById('boilRingWrap').classList.remove('boil-on');
+}
+
+function resetBoil() {
+  pauseBoil();
+  S.boil.elapsed = 0;
+  S.boil.lastMin = -1;
+  S.firedAlerts.clear();
+  document.getElementById('boilToggleBtn').textContent = '▶ 点火开始';
+  document.getElementById('boilDigits').textContent = `${S.boil.dur}:00`;
+  document.getElementById('boilLbl').textContent = '等待点火';
+  document.getElementById('boilRingProg').style.strokeDashoffset = '0';
+  renderHopGrid();
+}
+
+function boilTick() {
+  const total = S.boil.dur * 60;
+  S.boil.elapsed = Math.floor((Date.now() - S.boil.startTime) / 1000);
+  const remaining = total - S.boil.elapsed;
+
+  if (remaining <= 0) {
+    clearInterval(S.boil.iv);
+    S.boil.running = false;
+    document.getElementById('boilDigits').textContent = '熄火！';
+    document.getElementById('boilLbl').textContent = '煮沸完成 — 开始回旋澄清';
+    document.getElementById('boilRingWrap').classList.remove('boil-on');
+    document.getElementById('boilToggleBtn').textContent = '▶ 开始';
+    // Flameout hops
+    S.boilHops.filter(h => h.addition_type === 'flameout' || h.time_min === 0).forEach(h => {
+      if (!S.firedAlerts.has(h.id)) { S.firedAlerts.add(h.id); queueHopAlert(h); }
+    });
+    beep(660,0.4); setTimeout(()=>beep(880,0.4),200); setTimeout(()=>beep(1100,0.6),450);
+    return;
+  }
+
+  setTimer('boilDigits', 'boilRingProg', remaining, total);
+
+  // Check hop additions by minute transition
+  const remMin = Math.floor(remaining / 60);
+  if (remMin !== S.boil.lastMin) {
+    S.boil.lastMin = remMin;
+    S.boilHops.forEach(h => {
+      if (h.addition_type === 'boil' && h.time_min === remMin && !S.firedAlerts.has(h.id)) {
+        S.firedAlerts.add(h.id);
+        queueHopAlert(h);
+      }
+    });
+    // Also check whirlpool hops at 0 min (end of boil)
+    if (remMin === 0) {
+      S.boilHops.filter(h => h.addition_type === 'whirlpool').forEach(h => {
+        if (!S.firedAlerts.has(h.id)) { S.firedAlerts.add(h.id); queueHopAlert(h); }
+      });
+    }
+  }
+}
+
+// ── TIMER DISPLAY ────────────────────────────────────────────────
+function setTimer(digitId, progId, remaining, total) {
+  const m = Math.floor(remaining / 60);
+  const s = remaining % 60;
+  document.getElementById(digitId).textContent = `${m}:${String(s).padStart(2, '0')}`;
+  const offset = CIRC * (1 - remaining / total);
+  document.getElementById(progId).style.strokeDashoffset = offset.toFixed(2);
+}
+
+// ── HOP GRID ─────────────────────────────────────────────────────
+function renderHopGrid() {
+  const grid = document.getElementById('hopGrid');
+  const noMsg = document.getElementById('noHopsMsg');
+  if (!S.boilHops.length) { grid.innerHTML = ''; noMsg.style.display = ''; return; }
+  noMsg.style.display = 'none';
+
+  grid.innerHTML = S.boilHops.map(h => {
+    const timeLabel = h.addition_type === 'flameout' ? '熄火' :
+                      h.addition_type === 'whirlpool' ? '回旋' :
+                      `${h.time_min} min`;
+    const isAdded = S.addedHops.has(h.id);
+    const isAlert = S.firedAlerts.has(h.id) && !isAdded;
+    const cardCls = isAdded ? 'added' : isAlert ? 'alert' : '';
+    const btnCls = isAdded ? 'done' : isAlert ? 'alert-btn' : 'pending';
+    const btnTxt = isAdded ? '✓ 已投' : '投入';
+    return `
+      <div class="hop-card ${cardCls}" id="hc-${h.id}">
+        <div class="hc-time">${timeLabel}</div>
+        <div class="hc-name">${h.name}</div>
+        <div class="hc-detail">${h.amount_g}g · ${h.alpha_acid || '?'}% AA</div>
+        <button class="hc-btn ${btnCls}" id="hbtn-${h.id}"
+          onclick="markHopAdded('${h.id}')" ${isAdded ? 'disabled' : ''}>
+          ${btnTxt}
+        </button>
+      </div>`;
+  }).join('');
+}
+
+function markHopAdded(hopId) {
+  S.addedHops.add(hopId);
+  const card = document.getElementById(`hc-${hopId}`);
+  if (card) { card.className = 'hop-card added'; }
+  const btn = document.getElementById(`hbtn-${hopId}`);
+  if (btn) { btn.className = 'hc-btn done'; btn.textContent = '✓ 已投'; btn.disabled = true; }
+  // Dismiss banner if this was the current alert
+  if (S.alertQueue[0]?.id === hopId) {
+    S.alertQueue.shift();
+    showNextAlert();
+  }
+}
+
+// ── HOP ALERT SYSTEM ─────────────────────────────────────────────
+function queueHopAlert(hop) {
+  S.alertQueue.push(hop);
+  // Highlight card
+  if (!S.addedHops.has(hop.id)) {
+    const card = document.getElementById(`hc-${hop.id}`);
+    if (card) { card.className = 'hop-card alert'; }
+    const btn = document.getElementById(`hbtn-${hop.id}`);
+    if (btn) { btn.className = 'hc-btn alert-btn'; }
+  }
+  if (S.alertQueue.length === 1) showNextAlert();
+  beep(880, 0.3);
+  setTimeout(() => beep(880, 0.3), 350);
+}
+
+function showNextAlert() {
+  const banner = document.getElementById('alertBanner');
+  if (!S.alertQueue.length) { banner.classList.remove('show'); return; }
+  const hop = S.alertQueue[0];
+  const timeLabel = hop.addition_type === 'flameout' ? '熄火投入' :
+                    hop.addition_type === 'whirlpool' ? '回旋投入' :
+                    `${hop.time_min}分钟投入`;
+  document.getElementById('alertTitle').textContent = `现在投入 ${hop.name}`;
+  document.getElementById('alertDetail').textContent = `${hop.amount_g}g — ${timeLabel}，${hop.alpha_acid || '?'}% AA`;
+  const more = S.alertQueue.length - 1;
+  document.getElementById('alertMore').textContent = more > 0 ? `还有 ${more} 个待投` : '';
+  banner.classList.add('show');
+}
+
+function confirmHop() {
+  if (!S.alertQueue.length) return;
+  const hop = S.alertQueue.shift();
+  markHopAdded(hop.id);
+}
+
+// ── SPARGE PROGRESS ──────────────────────────────────────────────
+function updateSparge(v) {
+  document.getElementById('spargeFill').style.width = v + '%';
+  document.getElementById('spargePct').textContent = v + '%';
+}
+
+// ── PRE-BOIL GRAVITY WARNING ─────────────────────────────────────
+function checkPreboilOG() {
+  const preboilOG = parseFloat(document.getElementById('preboilOG').value);
+  const preboilVol = parseFloat(document.getElementById('preboilVol').value);
+  const warn = document.getElementById('gravWarn');
+  if (!preboilOG || !preboilVol || !S.targetOG) { warn.style.display = 'none'; return; }
+  const ferVol = S.recipe?.fermenter_vol_l || preboilVol * 0.85;
+  const estFinalOG = 1 + (preboilOG - 1) * (preboilVol / ferVol);
+  if (estFinalOG < S.targetOG - 0.004) {
+    warn.style.display = '';
+    warn.textContent = `⚠ 估算进罐OG约 ${estFinalOG.toFixed(3)}，低于目标 ${S.targetOG.toFixed(3)}（差 ${((S.targetOG - estFinalOG) * 1000).toFixed(0)} 点）。可适量补充 DME。`;
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+// ── OG DIFF ──────────────────────────────────────────────────────
+function checkOGDiff() {
+  const actual = parseFloat(document.getElementById('actualOG').value);
+  if (!actual || !S.targetOG) { document.getElementById('ogDiff').style.display = 'none'; return; }
+  const diff = ((actual - S.targetOG) * 1000).toFixed(1);
+  const el = document.getElementById('ogDiff');
+  el.style.display = '';
+  const absDiff = Math.abs(diff);
+  if (absDiff < 3) {
+    el.className = 'og-diff og-ok';
+    el.textContent = `✓ 实测 OG 与目标相差 ${absDiff} 点，非常接近`;
+  } else if (parseFloat(diff) > 0) {
+    el.className = 'og-diff og-hi';
+    el.textContent = `↑ 高于目标 ${absDiff} 点（糖度偏高）`;
+  } else {
+    el.className = 'og-diff og-lo';
+    el.textContent = `↓ 低于目标 ${absDiff} 点（收率不足或体积偏多）`;
+  }
+}
+
+// ── IODINE TEST ──────────────────────────────────────────────────
+function setIodine(pass) {
+  S.iodinePass = pass;
+  document.getElementById('iodinePas').className = `iodine-opt pass ${pass ? 'sel' : ''}`;
+  document.getElementById('iodineFai').className = `iodine-opt fail ${!pass ? 'sel' : ''}`;
+}
+
+// ── SUMMARY ──────────────────────────────────────────────────────
+function renderSummary() {
+  const v = id => (document.getElementById(id)?.value || '—');
+  const rows = [
+    ['配方', S.recipe?.name || '—'],
+    ['实际投料水温', `${v('strikeActual')} °C`],
+    ['实测糖化温度', `${v('mashTempActual')} °C`],
+    ['糖化 pH', v('mashPH')],
+    ['碘检结果', S.iodinePass ? '✓ 通过' : '✗ 未过'],
+    ['预煮沸比重', v('preboilOG')],
+    ['预煮沸体积', `${v('preboilVol')} L`],
+    ['进罐温度', `${v('chillActual')} °C`],
+    ['进罐体积', `${v('ferVol')} L`],
+    ['实测 OG', v('actualOG')],
+    ['投酵温度', `${v('pitchTemp')} °C`],
+  ];
+  document.getElementById('sumTable').innerHTML = rows.map(([k, v]) =>
+    `<tr><td>${k}</td><td>${v}</td></tr>`
+  ).join('');
+}
+
+// ── SAVE BREW DAY ────────────────────────────────────────────────
+async function saveBrewDay() {
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+
+  try {
+    const getVal = id => {
+      const v = document.getElementById(id)?.value;
+      const n = parseFloat(v);
+      return isNaN(n) ? null : n;
+    };
+    const getTxt = id => document.getElementById(id)?.value?.trim() || null;
+
+    const actualOG = getVal('actualOG');
+    const ferVolL = getVal('ferVol');
+    const pitchTempVal = getVal('pitchTemp');
+
+    // Create batch if needed
+    let batchId = S.batchId;
+    if (!batchId && S.recipe) {
+      const today = new Date().toISOString().split('T')[0];
+      const { data: batch, error } = await db.from('batches').insert({
+        recipe_id: S.recipe.id,
+        batch_name: `${S.recipe.name} · ${today}`,
+        brew_date: today,
+        actual_og: actualOG,
+        status: 'fermenting',
+      }).select().single();
+      if (error) throw error;
+      batchId = batch.id;
+      S.batchId = batchId;
+    }
+
+    if (!batchId) throw new Error('无法创建批次记录');
+
+    // Update batch OG
+    if (actualOG) {
+      await db.from('batches').update({ actual_og: actualOG, status: 'fermenting' }).eq('id', batchId);
+    }
+
+    // Save brew log
+    const logData = {
+      strike_temp_calc: parseFloat(document.getElementById('strikeVal').textContent) || null,
+      strike_temp_actual: getVal('strikeActual'),
+      mash_temp_actual: getVal('mashTempActual'),
+      mash_ph: getVal('mashPH'),
+      iodine_pass: S.iodinePass,
+      preboil_og: getVal('preboilOG'),
+      preboil_vol_l: getVal('preboilVol'),
+      sparge_temp: getVal('spargeTemp'),
+      chill_temp_actual: getVal('chillActual'),
+      chill_temp_target: getVal('chillTarget'),
+      fermenter_vol_l: ferVolL,
+      actual_og: actualOG,
+      pitch_temp: pitchTempVal,
+      notes: getTxt('brewNotes'),
+    };
+
+    await db.from('brew_day_logs').insert({
+      batch_id: batchId,
+      stage: 'complete',
+      data: logData,
+    });
+
+    btn.textContent = '✓ 记录已保存！';
+    btn.style.background = 'var(--success)';
+
+    // Update fermentation link
+    const ferLink = document.getElementById('ferLink');
+    ferLink.href = `fermentation.html?batch=${batchId}`;
+    ferLink.classList.remove('dim');
+
+    setTimeout(() => {
+      if (confirm(`酿造记录已保存！\n配方：${S.recipe?.name || ''}\n实测OG：${actualOG || '—'}\n\n前往发酵追踪页面？`)) {
+        location.href = `fermentation.html?batch=${batchId}`;
+      }
+    }, 400);
+  } catch (e) {
+    console.error(e);
+    btn.disabled = false;
+    btn.textContent = '保存失败，重试';
+    alert('保存失败: ' + e.message);
+  }
+}
+
+// ── AUDIO BEEP ───────────────────────────────────────────────────
+function beep(freq = 880, dur = 0.3) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = freq;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + dur);
+  } catch (e) { /* silent */ }
+}
+
+// ── PROGRESS BAR ─────────────────────────────────────────────────
+function progress(p) {
+  document.getElementById('loadFill').style.width = p + '%';
+  if (p >= 100) setTimeout(() => { document.getElementById('loadFill').style.width = '0'; }, 600);
+}
+
+// ── START ─────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
