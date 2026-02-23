@@ -142,6 +142,21 @@
     ::-webkit-scrollbar-track{background:var(--bg-primary);}
     ::-webkit-scrollbar-thumb{background:rgba(212,160,23,.25);border-radius:3px;}
     footer{text-align:center;padding:30px;font-size:11px;color:var(--text-dim);border-top:1px solid var(--border);}
+
+    /* WATER TREATMENT */
+    .water-vols{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+    .wv-box{background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;}
+    .wv-num{font-size:28px;font-weight:900;color:var(--accent-light);line-height:1;}
+    .wv-label{font-size:11px;color:var(--text-secondary);margin-top:4px;}
+    .ion-grid{display:grid;grid-template-columns:auto repeat(4,1fr);gap:8px;align-items:center;margin-bottom:18px;}
+    .ion-head{font-size:10px;color:var(--text-dim);text-align:center;text-transform:uppercase;letter-spacing:.06em;}
+    .ion-label{font-size:11px;color:var(--text-secondary);font-weight:600;white-space:nowrap;}
+    .salt-table{width:100%;border-collapse:collapse;}
+    .salt-table th{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;padding:6px 8px;text-align:right;border-bottom:1px solid var(--border);}
+    .salt-table th:first-child{text-align:left;}
+    .salt-table td{padding:8px;text-align:right;font-size:15px;font-weight:700;}
+    .salt-table td:first-child{text-align:left;font-size:13px;color:var(--text-secondary);font-weight:400;}
+    .salt-table tr:hover td{background:rgba(255,255,255,.02);}
   </style>
 </head>
 <body>
@@ -240,22 +255,37 @@
         <div class="fi-unit">升 (L)</div>
       </div>
       <div class="fg-group">
-        <label class="fg-label">🔥 煮沸蒸发量</label>
-        <input type="number" class="fi" id="eBoilLoss" value="20" min="0"
-               oninput="S.recipe.boilLoss=+this.value;recalc()">
-        <div class="fi-unit">升 (L)</div>
+        <label class="fg-label">🔥 煮沸蒸发率</label>
+        <input type="number" class="fi" id="eEvapRate" value="10" min="1" max="40" step="0.5"
+               oninput="S.recipe.evapRate=+this.value;recalc()">
+        <div class="fi-unit">% · 每小时蒸发比例</div>
       </div>
       <div class="fg-group">
-        <label class="fg-label">💀 综合损耗</label>
-        <input type="number" class="fi" id="eOtherLoss" value="10" min="0"
-               oninput="S.recipe.otherLoss=+this.value;recalc()">
-        <div class="fi-unit">升 (L)</div>
+        <label class="fg-label">💀 底水</label>
+        <input type="number" class="fi" id="eDeadSpace" value="10" min="0"
+               oninput="S.recipe.deadSpace=+this.value;recalc()">
+        <div class="fi-unit">升 (L) · 假底死角</div>
       </div>
       <div class="fg-group">
         <label class="fg-label">⚡ 糖化效率</label>
         <input type="number" class="fi" id="eEfficiency" value="72" min="1" max="100"
                oninput="S.recipe.efficiency=+this.value;recalc()">
         <div class="fi-unit">% · 典型值 68–76%</div>
+      </div>
+      <div class="fg-group">
+        <label class="fg-label">💧 水粮比</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span style="color:var(--text-secondary);font-weight:700;flex-shrink:0">1 :</span>
+          <input type="number" class="fi" id="eGrainRatio" value="3.5" min="2" max="6" step="0.1" style="flex:1"
+                 oninput="S.recipe.grainRatio=+this.value;recalc()">
+        </div>
+        <div class="fi-unit">L/kg · 糖化水倍数</div>
+      </div>
+      <div class="fg-group">
+        <label class="fg-label">🌾 谷物吸水率</label>
+        <input type="number" class="fi" id="eGrainAbsorption" value="1.0" min="0.3" max="1.5" step="0.05"
+               oninput="S.recipe.grainAbsorption=+this.value;recalc()">
+        <div class="fi-unit">L/kg · 麦糟锁水</div>
       </div>
     </div>
   </div>
@@ -349,6 +379,83 @@
     </div>
   </div>
 
+  <!-- Water Treatment -->
+  <div class="card">
+    <div class="sec-title">
+      <div class="sec-icon">💧</div>
+      <h2>水处理方案 <span>Water Treatment</span></h2>
+    </div>
+
+    <!-- Volume summary -->
+    <div class="water-vols">
+      <div class="wv-box">
+        <div class="wv-num" id="wMashVol">—</div>
+        <div class="wv-label">糖化用水 (L)</div>
+      </div>
+      <div class="wv-box">
+        <div class="wv-num" id="wSpargeVol">—</div>
+        <div class="wv-label">洗糟用水 (L)</div>
+      </div>
+      <div class="wv-box" style="border-color:rgba(212,160,23,.45)">
+        <div class="wv-num" style="color:var(--accent)" id="wTotalVol">—</div>
+        <div class="wv-label">总投水 (L)</div>
+      </div>
+    </div>
+
+    <!-- Ion targets -->
+    <div class="ion-grid">
+      <div></div>
+      <div class="ion-head">Ca²⁺</div>
+      <div class="ion-head">Mg²⁺</div>
+      <div class="ion-head">Cl⁻</div>
+      <div class="ion-head">SO₄²⁻</div>
+
+      <div class="ion-label">源水 mg/L</div>
+      <input type="number" class="fi" id="wSrcCa"  value="0"   min="0" oninput="S.water.src.Ca=+this.value;recalc()">
+      <input type="number" class="fi" id="wSrcMg"  value="0"   min="0" oninput="S.water.src.Mg=+this.value;recalc()">
+      <input type="number" class="fi" id="wSrcCl"  value="0"   min="0" oninput="S.water.src.Cl=+this.value;recalc()">
+      <input type="number" class="fi" id="wSrcSO4" value="0"   min="0" oninput="S.water.src.SO4=+this.value;recalc()">
+
+      <div class="ion-label">目标 mg/L</div>
+      <input type="number" class="fi" id="wTgtCa"  value="100" min="0" oninput="S.water.tgt.Ca=+this.value;recalc()">
+      <input type="number" class="fi" id="wTgtMg"  value="8"   min="0" oninput="S.water.tgt.Mg=+this.value;recalc()">
+      <input type="number" class="fi" id="wTgtCl"  value="50"  min="0" oninput="S.water.tgt.Cl=+this.value;recalc()">
+      <input type="number" class="fi" id="wTgtSO4" value="200" min="0" oninput="S.water.tgt.SO4=+this.value;recalc()">
+    </div>
+
+    <!-- Salt additions -->
+    <table class="salt-table">
+      <thead>
+        <tr>
+          <th>加盐</th>
+          <th>糖化水 (g)</th>
+          <th>洗糟水 (g)</th>
+          <th>总量 (g)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>💛 硫酸钙 Gypsum</td>
+          <td id="w_gypsum_mash">—</td>
+          <td id="w_gypsum_sparge">—</td>
+          <td id="w_gypsum_total">—</td>
+        </tr>
+        <tr>
+          <td>🔵 氯化钙 CaCl₂</td>
+          <td id="w_cacl2_mash">—</td>
+          <td id="w_cacl2_sparge">—</td>
+          <td id="w_cacl2_total">—</td>
+        </tr>
+        <tr>
+          <td>🟢 硫酸镁 Epsom</td>
+          <td id="w_epsom_mash">—</td>
+          <td id="w_epsom_sparge">—</td>
+          <td id="w_epsom_total">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
   <!-- Notes -->
   <div class="card">
     <div class="sec-title">
@@ -371,6 +478,13 @@ const db = createClient(
   'https://kbjndsrllqpuaedotdng.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtiam5kc3JsbHFwdWFlZG90ZG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4Mjg2NDAsImV4cCI6MjA4NzQwNDY0MH0.gSdKU54sAAAdDoqEhczuj4TxmcNzghMe9WN84zLOaAY'
 );
+
+// ═══ WATER CHEM CONSTANTS ════════════════════════════════════════════════════
+const CHEM = {
+  gypsum: { Ca: 61.5, SO4: 147.4 },
+  cacl2:  { Ca: 72.6, Cl:  127.5 },
+  epsom:  { Mg: 26.1, SO4: 103.0 },
+};
 
 // ═══ DATA ════════════════════════════════════════════════════════════════════
 const GRAINS = [
@@ -484,16 +598,66 @@ function ebcToColor(ebc) {
 // ═══ STATE ═══════════════════════════════════════════════════════════════════
 let currentId = null;
 let S = {
-  recipe: { name:'未命名配方', styleId:'', styleName:'', fermenterVol:150, boilLoss:20, otherLoss:10, mashRatio:60, efficiency:72, notes:'' },
+  recipe: { name:'未命名配方', styleId:'', styleName:'', fermenterVol:150,
+            evapRate:10, deadSpace:10, grainRatio:3.5, grainAbsorption:1.0,
+            efficiency:72, notes:'' },
   grains: [],   // {_uid, name, kg, ppg, ebc, type}
   hops:   [],   // {_uid, name, aa, g, type, time, day, dur, seq}
   yeast:  { name:'', strain:'', attenuation:75, minTemp:18, maxTemp:22 },
+  water:  { src:{ Ca:0, Mg:0, Cl:0, SO4:0 }, tgt:{ Ca:100, Mg:8, Cl:50, SO4:200 } },
 };
 let _uid = 0;
 const uid = () => ++_uid;
 
 // ═══ CALCULATIONS ════════════════════════════════════════════════════════════
-function totalVol() { return S.recipe.fermenterVol + S.recipe.boilLoss + S.recipe.otherLoss; }
+function totalVol() {
+  const E = Math.min(S.recipe.evapRate || 10, 99) / 100;
+  return S.recipe.fermenterVol / (1 - E);  // pre-boil volume
+}
+
+function calcWater() {
+  const G  = S.grains.reduce((s, g) => s + g.kg, 0);
+  const R  = S.recipe.grainRatio      || 3.5;
+  const A  = S.recipe.grainAbsorption || 1.0;
+  const E  = Math.min(S.recipe.evapRate || 10, 99) / 100;
+  const F  = S.recipe.fermenterVol;
+  const L  = S.recipe.deadSpace || 0;
+  const mashVol      = G * R + L;
+  const headRunnings = mashVol - G * A;
+  const preboilVol   = F / (1 - E);
+  const spargeVol    = Math.max(0, preboilVol - headRunnings);
+  return { mashVol, spargeVol, total: mashVol + spargeVol, grainKg: G };
+}
+
+function calcWaterSalts(mashVol, spargeVol) {
+  const { src, tgt } = S.water;
+  const dMg  = Math.max(0, tgt.Mg  - src.Mg);
+  const dCl  = Math.max(0, tgt.Cl  - src.Cl);
+  const dSO4 = Math.max(0, tgt.SO4 - src.SO4);
+  const epsomGpL  = dMg  / CHEM.epsom.Mg;
+  const cacl2GpL  = dCl  / CHEM.cacl2.Cl;
+  const gypsumGpL = Math.max(0, dSO4 - epsomGpL * CHEM.epsom.SO4) / CHEM.gypsum.SO4;
+  const mk = v => ({ mash: gypsumGpL*v, sparge: 0 });  // placeholder, computed per salt below
+  return {
+    gypsum: { mash: gypsumGpL*mashVol, sparge: gypsumGpL*spargeVol, total: gypsumGpL*(mashVol+spargeVol) },
+    cacl2:  { mash: cacl2GpL *mashVol, sparge: cacl2GpL *spargeVol, total: cacl2GpL *(mashVol+spargeVol) },
+    epsom:  { mash: epsomGpL *mashVol, sparge: epsomGpL *spargeVol, total: epsomGpL *(mashVol+spargeVol) },
+  };
+}
+
+function updateWaterUI() {
+  const { mashVol, spargeVol, total } = calcWater();
+  const fmt = n => n.toFixed(1);
+  document.getElementById('wMashVol').textContent   = fmt(mashVol);
+  document.getElementById('wSpargeVol').textContent = fmt(spargeVol);
+  document.getElementById('wTotalVol').textContent  = fmt(total);
+  const salts = calcWaterSalts(mashVol, spargeVol);
+  ['gypsum','cacl2','epsom'].forEach(s => {
+    document.getElementById(`w_${s}_mash`).textContent   = fmt(salts[s].mash);
+    document.getElementById(`w_${s}_sparge`).textContent = fmt(salts[s].sparge);
+    document.getElementById(`w_${s}_total`).textContent  = fmt(salts[s].total);
+  });
+}
 
 function calcOG() {
   const gal = totalVol() * 0.264172;
@@ -540,6 +704,7 @@ function recalc() {
   renderGrainRows();
   renderHopRows();
   renderGristBar();
+  updateWaterUI();
 }
 
 // ═══ GRAIN BILL ══════════════════════════════════════════════════════════════
@@ -721,11 +886,16 @@ async function saveRecipe() {
   try {
     const rData = {
       name: S.recipe.name, style_id: S.recipe.styleId, style_name: S.recipe.styleName,
-      fermenter_vol_l: S.recipe.fermenterVol, boil_loss_l: S.recipe.boilLoss,
-      other_loss_l: S.recipe.otherLoss, mash_ratio: S.recipe.mashRatio,
+      fermenter_vol_l: S.recipe.fermenterVol,
       efficiency: S.recipe.efficiency, notes: S.recipe.notes,
       updated_at: new Date().toISOString(),
     };
+    // water config packed as JSON (requires water_config JSONB column in Supabase)
+    const waterCfg = JSON.stringify({
+      evapRate: S.recipe.evapRate, deadSpace: S.recipe.deadSpace,
+      grainRatio: S.recipe.grainRatio, grainAbsorption: S.recipe.grainAbsorption,
+      src: S.water.src, tgt: S.water.tgt,
+    });
     let rid = currentId;
     if (rid) {
       const { error } = await db.from('recipes').update(rData).eq('id', rid);
@@ -761,6 +931,8 @@ async function saveRecipe() {
       });
       if (error) throw error;
     }
+    // water config — non-breaking (needs water_config JSONB column)
+    try { await db.from('recipes').update({ water_config: waterCfg }).eq('id', rid); } catch(_) {}
     showToast('✓ 配方已保存', 'success');
   } catch(e) { showToast('保存失败: ' + e.message, 'error'); }
 }
@@ -797,7 +969,15 @@ async function loadRecipe(id) {
   const { data: yeastArr } = await db.from('recipe_yeast').select('*').eq('recipe_id', id);
   if (!r) return;
   currentId = id;
-  S.recipe = { name:r.name, styleId:r.style_id||'', styleName:r.style_name||'', fermenterVol:r.fermenter_vol_l, boilLoss:r.boil_loss_l, otherLoss:r.other_loss_l, mashRatio:r.mash_ratio, efficiency:r.efficiency, notes:r.notes||'' };
+  const wc = r.water_config ? JSON.parse(r.water_config) : {};
+  S.recipe = { name:r.name, styleId:r.style_id||'', styleName:r.style_name||'',
+               fermenterVol:r.fermenter_vol_l, efficiency:r.efficiency, notes:r.notes||'',
+               evapRate: wc.evapRate ?? 10, deadSpace: wc.deadSpace ?? 10,
+               grainRatio: wc.grainRatio ?? 3.5, grainAbsorption: wc.grainAbsorption ?? 1.0 };
+  S.water = {
+    src: wc.src || { Ca:0, Mg:0, Cl:0, SO4:0 },
+    tgt: wc.tgt || { Ca:100, Mg:8, Cl:50, SO4:200 },
+  };
   S.grains = (grains||[]).map(g => ({ _uid:uid(), name:g.name, kg:g.amount_kg, ppg:g.ppg, ebc:g.ebc, type:g.grain_type }));
   S.hops   = (hops||[]).map(h => ({ _uid:uid(), name:h.name, aa:h.alpha_acid, g:h.amount_g, type:h.addition_type, time:h.time_min, day:h.dry_hop_day, dur:h.dry_hop_duration, seq:h.dry_hop_seq, _ibu:0 }));
   S.yeast  = yeastArr&&yeastArr[0] ? { name:yeastArr[0].name, strain:yeastArr[0].strain||'', attenuation:yeastArr[0].attenuation, minTemp:yeastArr[0].min_temp_c, maxTemp:yeastArr[0].max_temp_c } : { name:'', strain:'', attenuation:75, minTemp:18, maxTemp:22 };
@@ -843,7 +1023,11 @@ async function showEditor(id) {
     await loadRecipe(id);
   } else {
     currentId = null;
-    S = { recipe:{name:'未命名配方',styleId:'',styleName:'',fermenterVol:150,boilLoss:20,otherLoss:10,mashRatio:60,efficiency:72,notes:''}, grains:[], hops:[], yeast:{name:'',strain:'',attenuation:75,minTemp:18,maxTemp:22} };
+    S = { recipe:{name:'未命名配方',styleId:'',styleName:'',fermenterVol:150,
+                  evapRate:10,deadSpace:10,grainRatio:3.5,grainAbsorption:1.0,efficiency:72,notes:''},
+          grains:[], hops:[],
+          yeast:{name:'',strain:'',attenuation:75,minTemp:18,maxTemp:22},
+          water:{src:{Ca:0,Mg:0,Cl:0,SO4:0},tgt:{Ca:100,Mg:8,Cl:50,SO4:200}} };
     syncEditorFields();
   }
   renderStyles();
@@ -851,17 +1035,28 @@ async function showEditor(id) {
 }
 
 function syncEditorFields() {
-  document.getElementById('recipeName').value     = S.recipe.name;
-  document.getElementById('eFermenterVol').value  = S.recipe.fermenterVol;
-  document.getElementById('eBoilLoss').value      = S.recipe.boilLoss;
-  document.getElementById('eOtherLoss').value     = S.recipe.otherLoss;
-  document.getElementById('eEfficiency').value    = S.recipe.efficiency;
-  document.getElementById('eYeastName').value     = S.yeast.name;
-  document.getElementById('eYeastAtt').value      = S.yeast.attenuation;
-  document.getElementById('eYeastMinT').value     = S.yeast.minTemp;
-  document.getElementById('eYeastMaxT').value     = S.yeast.maxTemp;
-  document.getElementById('eNotes').value         = S.recipe.notes;
+  document.getElementById('recipeName').value        = S.recipe.name;
+  document.getElementById('eFermenterVol').value     = S.recipe.fermenterVol;
+  document.getElementById('eEvapRate').value         = S.recipe.evapRate;
+  document.getElementById('eDeadSpace').value        = S.recipe.deadSpace;
+  document.getElementById('eEfficiency').value       = S.recipe.efficiency;
+  document.getElementById('eGrainRatio').value       = S.recipe.grainRatio;
+  document.getElementById('eGrainAbsorption').value  = S.recipe.grainAbsorption;
+  document.getElementById('eYeastName').value        = S.yeast.name;
+  document.getElementById('eYeastAtt').value         = S.yeast.attenuation;
+  document.getElementById('eYeastMinT').value        = S.yeast.minTemp;
+  document.getElementById('eYeastMaxT').value        = S.yeast.maxTemp;
+  document.getElementById('eNotes').value            = S.recipe.notes;
   document.getElementById('styleBadgeTop').textContent = S.recipe.styleName || '— 未选风格 —';
+  // water ions
+  document.getElementById('wSrcCa').value  = S.water.src.Ca;
+  document.getElementById('wSrcMg').value  = S.water.src.Mg;
+  document.getElementById('wSrcCl').value  = S.water.src.Cl;
+  document.getElementById('wSrcSO4').value = S.water.src.SO4;
+  document.getElementById('wTgtCa').value  = S.water.tgt.Ca;
+  document.getElementById('wTgtMg').value  = S.water.tgt.Mg;
+  document.getElementById('wTgtCl').value  = S.water.tgt.Cl;
+  document.getElementById('wTgtSO4').value = S.water.tgt.SO4;
 }
 
 // ═══ TOAST ════════════════════════════════════════════════════════════════════
