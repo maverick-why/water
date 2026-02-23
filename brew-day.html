@@ -305,12 +305,110 @@
     </div>
 
     <div class="step-foot">
-      <button class="btn btn-primary btn-full" onclick="goStage(1)">确认备料完成，开始糖化 →</button>
+      <button class="btn btn-primary btn-full" onclick="goStage(1)">备料完成，开始调水 →</button>
     </div>
   </div>
 
-  <!-- ── PANEL 1: 糖化 ── -->
+  <!-- ── PANEL 1: 调水 ── -->
   <div class="panel" id="panel-1">
+    <div class="card">
+      <div class="card-title"><span class="ico">💧</span>水质处理
+        <a href="index.html" target="_blank"
+          style="margin-left:auto;font-size:11px;color:var(--accent);text-decoration:none;
+                 border:1px solid var(--border);padding:3px 10px;border-radius:6px;">
+          → 打开调水工具
+        </a>
+      </div>
+      <p style="font-size:12px;color:var(--text-secondary);line-height:1.7;margin-bottom:16px">
+        按调水工具计算结果，分别向糖化水和洗槽水中加入矿物质盐。记录实际添加量。
+      </p>
+
+      <!-- 糖化水 -->
+      <div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.06em;
+                  margin-bottom:10px;text-transform:uppercase">🍺 糖化水处理</div>
+      <div class="row c2">
+        <div class="field">
+          <label>糖化水体积 (L)</label>
+          <input type="number" id="wt_mash_vol" placeholder="—" readonly
+            style="opacity:.65;cursor:default">
+        </div>
+        <div class="field">
+          <label>源水 pH</label>
+          <input type="number" id="wt_src_ph" placeholder="7.2" step="0.1" min="5" max="9">
+        </div>
+      </div>
+      <div class="row c3">
+        <div class="field">
+          <label>石膏 CaSO₄ (g)</label>
+          <input type="number" id="wt_mash_gypsum" placeholder="0.0" step="0.1" min="0">
+        </div>
+        <div class="field">
+          <label>氯化钙 CaCl₂ (g)</label>
+          <input type="number" id="wt_mash_cacl2" placeholder="0.0" step="0.1" min="0">
+        </div>
+        <div class="field">
+          <label>泻盐 MgSO₄ (g)</label>
+          <input type="number" id="wt_mash_epsom" placeholder="0.0" step="0.1" min="0">
+        </div>
+      </div>
+      <div class="row c2">
+        <div class="field">
+          <label>乳酸 88% (mL)</label>
+          <input type="number" id="wt_mash_lactic" placeholder="0.0" step="0.1" min="0">
+        </div>
+        <div class="field">
+          <label>磷酸 85% (mL)</label>
+          <input type="number" id="wt_mash_phosphoric" placeholder="0.0" step="0.1" min="0">
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:16px 0"></div>
+
+      <!-- 洗槽水 -->
+      <div style="font-size:12px;font-weight:700;color:var(--blue);letter-spacing:.06em;
+                  margin-bottom:10px;text-transform:uppercase">🫙 洗槽水处理</div>
+      <div class="row c2">
+        <div class="field">
+          <label>洗槽水体积 (L)</label>
+          <input type="number" id="wt_sparge_vol" placeholder="—" readonly
+            style="opacity:.65;cursor:default">
+        </div>
+        <div class="field" style="display:flex;flex-direction:column;justify-content:flex-end">
+          <p style="font-size:11px;color:var(--text-secondary);line-height:1.5">
+            洗槽水一般只加少量矿物盐，无需调 pH
+          </p>
+        </div>
+      </div>
+      <div class="row c3">
+        <div class="field">
+          <label>石膏 CaSO₄ (g)</label>
+          <input type="number" id="wt_sparge_gypsum" placeholder="0.0" step="0.1" min="0">
+        </div>
+        <div class="field">
+          <label>氯化钙 CaCl₂ (g)</label>
+          <input type="number" id="wt_sparge_cacl2" placeholder="0.0" step="0.1" min="0">
+        </div>
+        <div class="field">
+          <label>泻盐 MgSO₄ (g)</label>
+          <input type="number" id="wt_sparge_epsom" placeholder="0.0" step="0.1" min="0">
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:16px 0"></div>
+
+      <div style="display:flex;align-items:center;gap:10px;padding:4px 0">
+        <div class="ckbox" id="wtDoneBox" onclick="toggleWaterDone()"></div>
+        <span style="font-size:13px">糖化水和洗槽水均已按量处理完毕</span>
+      </div>
+    </div>
+
+    <div class="step-foot">
+      <button class="btn btn-primary btn-full" onclick="goStage(2)">调水完成，开始糖化 →</button>
+    </div>
+  </div>
+
+  <!-- ── PANEL 2: 糖化 ── -->
+  <div class="panel" id="panel-2">
     <div class="card">
       <div class="card-title"><span class="ico">⏱️</span>糖化计时
         <span id="mashDurLabel" style="margin-left:auto;font-size:11px;color:var(--text-dim)">60 分钟</span>
@@ -372,12 +470,12 @@
     </div>
 
     <div class="step-foot">
-      <button class="btn btn-primary btn-full" onclick="goStage(2)">糖化完成，开始过滤 →</button>
+      <button class="btn btn-primary btn-full" onclick="goStage(3)">糖化完成，开始过滤 →</button>
     </div>
   </div>
 
   <!-- ── PANEL 2: 过滤冲槽 ── -->
-  <div class="panel" id="panel-2">
+  <div class="panel" id="panel-3">
     <div class="card">
       <div class="card-title"><span class="ico">🫙</span>过滤 & 冲槽</div>
       <p style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;line-height:1.6">
@@ -422,12 +520,12 @@
     </div>
 
     <div class="step-foot">
-      <button class="btn btn-primary btn-full" onclick="goStage(3)">过滤完成，开始煮沸 →</button>
+      <button class="btn btn-primary btn-full" onclick="goStage(4)">过滤完成，开始煮沸 →</button>
     </div>
   </div>
 
   <!-- ── PANEL 3: 煮沸 ── -->
-  <div class="panel" id="panel-3">
+  <div class="panel" id="panel-4">
     <div class="card">
       <div class="card-title"><span class="ico">🔥</span>煮沸计时
         <span id="boilDurLabel" style="margin-left:auto;font-size:11px;color:var(--text-dim)">60 分钟</span>
@@ -460,12 +558,12 @@
     </div>
 
     <div class="step-foot">
-      <button class="btn btn-primary btn-full" onclick="goStage(4)">煮沸完成，开始冷却 →</button>
+      <button class="btn btn-primary btn-full" onclick="goStage(5)">煮沸完成，开始冷却 →</button>
     </div>
   </div>
 
   <!-- ── PANEL 4: 冷却进罐 ── -->
-  <div class="panel" id="panel-4">
+  <div class="panel" id="panel-5">
     <div class="card">
       <div class="card-title"><span class="ico">❄️</span>冷却记录</div>
       <div class="row c3">
@@ -500,12 +598,12 @@
     </div>
 
     <div class="step-foot">
-      <button class="btn btn-primary btn-full" onclick="goStage(5)">进罐完成，投酵母 →</button>
+      <button class="btn btn-primary btn-full" onclick="goStage(6)">进罐完成，投酵母 →</button>
     </div>
   </div>
 
   <!-- ── PANEL 5: 投酵完成 ── -->
-  <div class="panel" id="panel-5">
+  <div class="panel" id="panel-6">
     <div class="card">
       <div class="card-title"><span class="ico">🧫</span>酵母投加</div>
       <div class="row c2">
@@ -563,11 +661,12 @@ const db = createClient(
 const CIRC = 2 * Math.PI * 86; // SVG circle circumference ≈ 540.35
 const STAGES = [
   { id:0, icon:'🌾', label:'备料' },
-  { id:1, icon:'🌡️', label:'糖化' },
-  { id:2, icon:'🫙', label:'过滤冲槽' },
-  { id:3, icon:'🔥', label:'煮沸' },
-  { id:4, icon:'❄️', label:'冷却进罐' },
-  { id:5, icon:'🧫', label:'投酵完成' },
+  { id:1, icon:'💧', label:'调水' },
+  { id:2, icon:'🌡️', label:'糖化' },
+  { id:3, icon:'🫙', label:'过滤冲槽' },
+  { id:4, icon:'🔥', label:'煮沸' },
+  { id:5, icon:'❄️', label:'冷却进罐' },
+  { id:6, icon:'🧫', label:'投酵完成' },
 ];
 
 // ── STATE ─────────────────────────────────────────────────────────
@@ -642,8 +741,8 @@ function activateStage(id) {
   renderStageBar();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  if (id === 3) renderHopGrid();
-  if (id === 5) renderSummary();
+  if (id === 4) renderHopGrid();
+  if (id === 6) renderSummary();
 }
 
 function goStage(id) {
@@ -714,6 +813,7 @@ async function loadRecipe(id) {
   document.getElementById('boilDigits').textContent = `${boilDur}:00`;
 
   renderPrepChecklist();
+  fillWaterTreatmentVols();
   renderStats();
   document.getElementById('recipeSummary').style.display = '';
   document.getElementById('checkCard').style.display = '';
@@ -816,6 +916,20 @@ function renderPrepChecklist() {
       </div>
     </li>
   `).join('');
+}
+
+// Fill water volumes into the water treatment panel when recipe is loaded
+function fillWaterTreatmentVols() {
+  const mashVol = mashVolumeL();
+  const sparVol = spargeVolumeL();
+  if (mashVol) document.getElementById('wt_mash_vol').value = mashVol.toFixed(0);
+  if (sparVol) document.getElementById('wt_sparge_vol').value = sparVol.toFixed(0);
+}
+
+function toggleWaterDone() {
+  const box = document.getElementById('wtDoneBox');
+  box.classList.toggle('on');
+  box.textContent = box.classList.contains('on') ? '✓' : '';
 }
 
 function toggleCk(i) {
@@ -1194,6 +1308,19 @@ async function saveBrewDay() {
 
     // Save brew log
     const logData = {
+      water_treatment: {
+        src_ph:          getVal('wt_src_ph'),
+        mash_vol_l:      getVal('wt_mash_vol'),
+        mash_gypsum_g:   getVal('wt_mash_gypsum'),
+        mash_cacl2_g:    getVal('wt_mash_cacl2'),
+        mash_epsom_g:    getVal('wt_mash_epsom'),
+        mash_lactic_ml:  getVal('wt_mash_lactic'),
+        mash_phosphoric_ml: getVal('wt_mash_phosphoric'),
+        sparge_vol_l:    getVal('wt_sparge_vol'),
+        sparge_gypsum_g: getVal('wt_sparge_gypsum'),
+        sparge_cacl2_g:  getVal('wt_sparge_cacl2'),
+        sparge_epsom_g:  getVal('wt_sparge_epsom'),
+      },
       strike_temp_calc: parseFloat(document.getElementById('strikeVal').textContent) || null,
       strike_temp_actual: getVal('strikeActual'),
       mash_temp_actual: getVal('mashTempActual'),
