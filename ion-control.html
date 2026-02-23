@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>时光酿造所 · 生产级全离子掌控工作台</title>
+  <style>
+    :root {
+      --bg-primary:    #0c0c18;
+      --bg-secondary:  #13132a;
+      --bg-card:       #1a1a35;
+      --accent:        #d4a017;
+      --accent-light:  #f0c040;
+      --accent-dim:    rgba(212,160,23,0.12);
+      --border:        rgba(212,160,23,0.18);
+      --text-primary:  #ededf5;
+      --text-secondary:#9090b8;
+      --text-dim:      #505070;
+      --success:       #10b981;
+      --warning:       #f59e0b;
+      --danger:        #ef4444;
+      --blue:          #60a5fa;
+      --purple:        #a78bfa;
+      --green:         #34d399;
+      --glow:          0 0 40px rgba(212,160,23,0.12);
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: linear-gradient(135deg, #0c0c18 0%, #1a0c00 50%, #0c0c18 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 40px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(24px);
+    }
+    .logo { display:flex; align-items:center; gap:14px; }
+    .logo-icon {
+      width:46px; height:46px; border-radius:12px;
+      background: linear-gradient(135deg, var(--accent) 0%, #8a5c00 100%);
+      display:flex; align-items:center; justify-content:center; font-size:22px;
+    }
+    .logo-text h1 { font-size:19px; font-weight:800; color:var(--accent); letter-spacing:.06em; }
+    .logo-text p  { font-size:11px; color:var(--text-secondary); letter-spacing:.12em; margin-top:2px; }
+    .header-badges { display:flex; gap:10px; align-items:center; }
+    .badge {
+      display:flex; align-items:center; gap:6px;
+      background:var(--accent-dim); border:1px solid var(--border); border-radius:20px;
+      padding:5px 14px; font-size:11px; color:var(--accent); letter-spacing:.05em;
+    }
+    .dot { width:7px; height:7px; border-radius:50%; background:var(--success); animation:pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── MAIN ── */
+    .main { max-width:1380px; margin:0 auto; padding:28px 24px 60px; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--bg-card); border:1px solid var(--border); border-radius:18px;
+      padding:26px; margin-bottom:22px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .card:hover { border-color:rgba(212,160,23,.35); box-shadow:var(--glow); }
+
+    /* ── SECTION TITLE ── */
+    .sec-title { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+    .sec-icon {
+      width:36px; height:36px; border-radius:10px;
+      background:var(--accent-dim); border:1px solid var(--border);
+      display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0;
+    }
+    .sec-title h2 { font-size:17px; font-weight:700; }
+    .sec-title span { font-size:12px; color:var(--text-secondary); margin-left:8px; }
+
+    /* ── STYLE GRID ── */
+    .style-scroll { overflow-x:auto; padding-bottom:8px; margin-bottom:18px; }
+    .style-grid {
+      display:flex; gap:10px; min-width:max-content;
+    }
+    .style-card {
+      background:var(--bg-secondary); border:1px solid rgba(255,255,255,.06);
+      border-radius:14px; padding:12px 14px; cursor:pointer;
+      transition:all .2s; text-align:center; width:120px; flex-shrink:0;
+    }
+    .style-card:hover { border-color:var(--accent); background:var(--accent-dim); }
+    .style-card.active {
+      border-color:var(--accent); background:var(--accent-dim);
+      box-shadow:0 0 14px rgba(212,160,23,.25);
+    }
+    .style-card .s-emoji { font-size:22px; margin-bottom:5px; }
+    .style-card .s-name  { font-size:11px; font-weight:700; color:var(--text-primary); line-height:1.3; }
+    .style-card .s-en    { font-size:9px; color:var(--text-dim); margin-top:2px; }
+
+    /* ── STYLE DETAIL ── */
+    .style-detail {
+      background:var(--bg-secondary); border:1px solid rgba(212,160,23,.15);
+      border-radius:14px; padding:20px;
+    }
+    .style-detail-head { display:flex; align-items:flex-start; gap:14px; margin-bottom:18px; }
+    .style-detail-head .big-emoji { font-size:36px; line-height:1; }
+    .style-detail-head .title   { font-size:20px; font-weight:800; color:var(--accent); }
+    .style-detail-head .en-name { font-size:13px; color:var(--text-secondary); margin-top:2px; }
+    .style-detail-head .desc    { font-size:12px; color:var(--text-dim); margin-top:4px; line-height:1.6; }
+    .style-ion-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+    @media(max-width:700px){ .style-ion-grid{grid-template-columns:repeat(2,1fr);} }
+    .style-ion-item { display:flex; flex-direction:column; gap:6px; }
+    .style-ion-label { font-size:11px; font-weight:600; color:var(--text-secondary); }
+    .style-ion-range { font-size:10px; color:var(--accent); }
+    .range-track {
+      height:7px; background:rgba(255,255,255,.07); border-radius:4px;
+      position:relative; overflow:visible;
+    }
+    .range-fill {
+      position:absolute; top:0; height:100%;
+      background:rgba(212,160,23,.3); border-radius:4px;
+    }
+    .range-dot {
+      position:absolute; top:50%; transform:translate(-50%,-50%);
+      width:11px; height:11px; background:var(--accent); border-radius:50%;
+      box-shadow:0 0 6px rgba(212,160,23,.5);
+    }
+    .style-ion-target { font-size:11px; color:var(--text-dim); }
+    .style-ion-target span { color:var(--accent-light); font-weight:700; }
+
+    /* ── LAYOUT GRIDS ── */
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+    .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; }
+    @media(max-width:900px){ .grid-2{grid-template-columns:1fr;} .grid-3{grid-template-columns:1fr;} }
+
+    /* ── FORM ── */
+    .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:16px; }
+    .form-group { display:flex; flex-direction:column; gap:6px; }
+    .form-label {
+      font-size:11.5px; color:var(--text-secondary); font-weight:600;
+      display:flex; align-items:center; gap:5px; letter-spacing:.02em;
+    }
+    .form-input {
+      background:var(--bg-secondary); border:1px solid rgba(255,255,255,.09);
+      border-radius:10px; padding:11px 13px;
+      color:var(--text-primary); font-size:17px; font-weight:700;
+      outline:none; width:100%; transition:all .2s;
+      font-family: inherit;
+    }
+    .form-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(212,160,23,.1); }
+    .form-input:disabled { opacity:.5; cursor:not-allowed; }
+    .form-unit { font-size:10px; color:var(--text-dim); }
+    .form-unit.accent { color:var(--accent); }
+
+    /* ── PRESET BUTTONS ── */
+    .presets { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+    .preset-btn {
+      padding:5px 14px; background:var(--bg-secondary);
+      border:1px solid rgba(255,255,255,.08); border-radius:18px;
+      color:var(--text-secondary); font-size:12px; cursor:pointer; transition:all .2s;
+      font-family:inherit;
+    }
+    .preset-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+    /* ── TOGGLE GROUP ── */
+    .toggle-group { display:flex; background:var(--bg-secondary); border-radius:10px; padding:3px; }
+    .toggle-btn {
+      flex:1; padding:7px 16px; border:none; background:transparent;
+      color:var(--text-secondary); border-radius:8px; font-size:12px;
+      cursor:pointer; transition:all .2s; font-family:inherit; white-space:nowrap;
+    }
+    .toggle-btn.active { background:var(--accent); color:#0c0c18; font-weight:700; }
+
+    /* ── VOLUME DISPLAY ── */
+    .vol-display { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
+    .vol-box {
+      border-radius:12px; padding:14px; text-align:center;
+    }
+    .vol-box.mash { background:rgba(96,165,250,.08); border:1px solid rgba(96,165,250,.2); }
+    .vol-box.sparge { background:rgba(167,139,250,.08); border:1px solid rgba(167,139,250,.2); }
+    .vol-box .v-label { font-size:10px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px; }
+    .vol-box.mash .v-label    { color:#60a5fa; }
+    .vol-box.sparge .v-label  { color:#a78bfa; }
+    .vol-box .v-num   { font-size:30px; font-weight:800; line-height:1; }
+    .vol-box .v-unit  { font-size:11px; color:var(--text-secondary); margin-top:3px; }
+
+    /* ── DIVIDER ── */
+    .divider { height:1px; background:var(--border); margin:18px 0; }
+
+    /* ── SALT RESULT CARDS ── */
+    .salt-card {
+      background:var(--bg-secondary); border:1px solid rgba(255,255,255,.07);
+      border-radius:18px; padding:22px; text-align:center; position:relative; overflow:hidden;
+      transition:all .3s;
+    }
+    .salt-card::after {
+      content:''; position:absolute; top:0; left:0; right:0; height:3px;
+      background:linear-gradient(90deg, var(--c) 0%, transparent 100%);
+    }
+    .salt-card.gypsum { --c: #60a5fa; }
+    .salt-card.cacl2  { --c: #a78bfa; }
+    .salt-card.epsom  { --c: #34d399; }
+    .salt-icon {
+      width:50px; height:50px; border-radius:14px; font-size:24px;
+      display:flex; align-items:center; justify-content:center; margin:0 auto 10px;
+    }
+    .gypsum .salt-icon { background:rgba(96,165,250,.12); }
+    .cacl2  .salt-icon { background:rgba(167,139,250,.12); }
+    .epsom  .salt-icon { background:rgba(52,211,153,.12); }
+    .salt-name    { font-size:15px; font-weight:800; margin-bottom:3px; }
+    .salt-formula {
+      font-size:11px; color:var(--text-dim); font-family:'Courier New',monospace;
+      margin-bottom:14px;
+    }
+    .salt-total   { font-size:42px; font-weight:900; color:var(--accent); line-height:1; }
+    .salt-total-unit { font-size:13px; color:var(--text-secondary); margin:3px 0 18px; }
+    .salt-contributions {
+      display:flex; gap:6px; justify-content:center; margin-bottom:14px; flex-wrap:wrap;
+    }
+    .contrib-tag {
+      font-size:9px; padding:2px 8px; border-radius:10px;
+      background:rgba(255,255,255,.06); color:var(--text-secondary);
+    }
+    .salt-split {
+      display:grid; grid-template-columns:1fr 1fr; gap:10px;
+      background:rgba(0,0,0,.2); border-radius:12px; padding:12px;
+    }
+    .split-item .s-label { font-size:9px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px; }
+    .split-item .s-val   { font-size:20px; font-weight:800; }
+    .split-item .s-unit  { font-size:10px; color:var(--text-secondary); }
+
+    /* ── QUALITY CONTROL ── */
+    .qc-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    @media(max-width:700px){ .qc-grid{grid-template-columns:1fr;} }
+    .qc-box {
+      background:var(--bg-secondary); border:1px solid rgba(255,255,255,.06);
+      border-radius:14px; padding:20px;
+    }
+    .qc-label { font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--text-secondary); margin-bottom:14px; }
+
+    /* ratio */
+    .ratio-center { text-align:center; margin-bottom:12px; }
+    .ratio-num  { font-size:38px; font-weight:900; }
+    .ratio-desc { font-size:12px; color:var(--text-secondary); margin-top:2px; }
+    .ratio-bar  {
+      position:relative; height:12px;
+      background:linear-gradient(90deg, #c2410c 0%, #92400e 30%, #d97706 50%, #65a30d 70%, #16a34a 100%);
+      border-radius:6px; margin-bottom:8px;
+    }
+    .ratio-pin {
+      position:absolute; top:50%; transform:translate(-50%,-50%);
+      width:22px; height:22px; background:#fff; border-radius:50%;
+      box-shadow:0 2px 10px rgba(0,0,0,.6); transition:left .35s ease;
+    }
+    .ratio-scale {
+      display:flex; justify-content:space-between; font-size:10px; color:var(--text-dim);
+    }
+
+    /* ca gauge */
+    .ca-center { text-align:center; margin-bottom:10px; }
+    .ca-num    { font-size:36px; font-weight:900; transition:color .3s; }
+    .ca-unit   { font-size:12px; color:var(--text-secondary); }
+    .ca-status {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:3px 12px; border-radius:16px; font-size:11px; font-weight:600; margin-top:6px;
+    }
+    .ca-status.good    { background:rgba(16,185,129,.12); color:var(--success); }
+    .ca-status.warning { background:rgba(245,158,11,.12); color:var(--warning); }
+    .ca-status.danger  { background:rgba(239,68,68,.12);  color:var(--danger); }
+    .ca-bar {
+      position:relative; height:10px; border-radius:5px; margin:10px 0 6px;
+      background:linear-gradient(90deg, #ef4444 0%, #f59e0b 15%, #10b981 25%, #10b981 75%, #f59e0b 88%, #ef4444 100%);
+    }
+    .ca-pin {
+      position:absolute; top:50%; transform:translate(-50%,-50%);
+      width:18px; height:18px; background:#fff; border-radius:50%;
+      box-shadow:0 2px 8px rgba(0,0,0,.5); transition:left .35s ease;
+    }
+    .ca-scale { display:flex; justify-content:space-between; font-size:9px; color:var(--text-dim); }
+
+    /* ── PROFILE BARS ── */
+    .profile-title {
+      font-size:11px; text-transform:uppercase; letter-spacing:.1em;
+      color:var(--text-secondary); margin:20px 0 14px;
+    }
+    .profile-row { display:grid; grid-template-columns:64px 1fr 80px; align-items:center; gap:14px; margin-bottom:12px; }
+    .profile-ion { font-size:12px; font-weight:700; color:var(--text-secondary); }
+    .p-track {
+      height:8px; background:rgba(255,255,255,.07); border-radius:4px;
+      position:relative; overflow:visible;
+    }
+    .p-fill  { height:100%; border-radius:4px; transition:width .4s ease; }
+    .p-target-line {
+      position:absolute; top:50%; transform:translate(-50%,-50%);
+      width:2px; height:16px; border-radius:1px; transition:left .4s ease;
+    }
+    .profile-val { font-size:13px; font-weight:800; text-align:right; }
+    .profile-diff { font-size:10px; }
+
+    /* ── PROCESS GUIDE ── */
+    .process-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    @media(max-width:700px){ .process-grid{grid-template-columns:1fr;} }
+    .process-step {
+      background:var(--bg-secondary); border:1px solid rgba(255,255,255,.06);
+      border-radius:14px; padding:20px; position:relative; overflow:hidden;
+    }
+    .process-step::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:2px;
+      background:linear-gradient(90deg, var(--step-c) 0%, transparent 100%);
+    }
+    .step-1 { --step-c: #60a5fa; }
+    .step-2 { --step-c: #a78bfa; }
+    .step-num {
+      position:absolute; top:16px; right:16px;
+      width:30px; height:30px; border-radius:50%;
+      background:var(--step-c); color:#0c0c18;
+      display:flex; align-items:center; justify-content:center;
+      font-size:15px; font-weight:900; opacity:.9;
+    }
+    .step-title { font-size:14px; font-weight:800; margin-bottom:6px; }
+    .step-desc  { font-size:12px; color:var(--text-secondary); line-height:1.65; margin-bottom:14px; }
+    .step-salt-list { display:flex; flex-direction:column; gap:7px; }
+    .step-salt-row {
+      display:flex; justify-content:space-between; align-items:center;
+      background:rgba(0,0,0,.2); border-radius:9px; padding:9px 13px;
+    }
+    .step-salt-row .ss-name  { font-size:12px; color:var(--text-secondary); }
+    .step-salt-row .ss-val   { font-size:15px; font-weight:800; color:var(--accent); }
+    .step-water { margin-top:10px; font-size:11px; color:var(--text-dim); }
+    .step-water span { color:var(--accent); font-weight:700; }
+
+    /* ── ALERTS ── */
+    .alert {
+      display:flex; gap:10px; padding:11px 14px;
+      border-radius:10px; font-size:12px; margin-top:12px; line-height:1.55;
+    }
+    .alert.info    { background:rgba(96,165,250,.08); border:1px solid rgba(96,165,250,.2); color:#93c5fd; }
+    .alert.warning { background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.2); color:#fbbf24; }
+    .alert.danger  { background:rgba(239,68,68,.08);  border:1px solid rgba(239,68,68,.2);  color:#fca5a5; }
+    #overageAlert { display:none; }
+
+    /* ── PRINT BUTTON ── */
+    .print-btn {
+      display:flex; align-items:center; gap:8px;
+      padding:9px 20px; background:var(--accent-dim); border:1px solid var(--border);
+      border-radius:10px; color:var(--accent); font-size:13px; font-weight:600;
+      cursor:pointer; transition:all .2s; font-family:inherit;
+    }
+    .print-btn:hover { background:rgba(212,160,23,.22); }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align:center; padding:36px; font-size:11px; color:var(--text-dim);
+      border-top:1px solid var(--border); margin-top:20px;
+    }
+    footer p+p { margin-top:5px; }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width:7px; height:7px; }
+    ::-webkit-scrollbar-track { background:var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background:rgba(212,160,23,.25); border-radius:4px; }
+
+    /* ── PULSE ANIMATION ON UPDATE ── */
+    @keyframes saltPulse { 0%{box-shadow:0 0 0 rgba(212,160,23,0)} 40%{box-shadow:0 0 20px rgba(212,160,23,.35)} 100%{box-shadow:0 0 0 rgba(212,160,23,0)} }
+    .updated { animation: saltPulse .5s ease; }
+
+    @media print {
+      .header { position:static; }
+      body { background:#fff; color:#000; }
+      .card, .style-detail, .qc-box, .process-step { border:1px solid #ccc; background:#fff; }
+      .print-btn, .preset-btn { display:none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">🍺</div>
+    <div class="logo-text">
+      <h1>时光酿造所</h1>
+      <p>SHIGUANG BREWING · PRODUCTION ION CONTROL STATION</p>
+    </div>
+  </div>
+  <div class="header-badges">
+    <div class="badge"><span class="dot"></span> 实时计算</div>
+    <div class="badge">PPM级精准</div>
+    <button class="print-btn" onclick="window.print()">🖨 打印工单</button>
+  </div>
+</header>
+
+<!-- ═══════════════════ MAIN ═══════════════════ -->
+<div class="main">
+
+  <!-- ── 1. STYLE DASHBOARD ── -->
+  <div class="card">
+    <div class="sec-title">
+      <div class="sec-icon">🎯</div>
+      <div>
+        <h2>风格仪表盘 <span>Style Dashboard · 25种经典风格内置</span></h2>
+      </div>
+    </div>
+
+    <div class="style-scroll">
+      <div class="style-grid" id="styleGrid"></div>
+    </div>
+
+    <div class="style-detail" id="styleDetail"></div>
+  </div>
+
+  <!-- ── 2. WATER SETUP + SOURCE WATER ── -->
+  <div class="grid-2">
+    <!-- Left: Volume -->
+    <div class="card">
+      <div class="sec-title">
+        <div class="sec-icon">⚗️</div>
+        <div><h2>生产水量配置 <span>Process Volume Setup</span></h2></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">🪣 总批次用水量</label>
+          <input type="number" class="form-input" id="totalVolume" value="150" min="1" max="10000">
+          <div class="form-unit">升 (L)</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">⚖️ 糖化水占比</label>
+          <input type="number" class="form-input" id="mashRatio" value="60" min="20" max="90">
+          <div class="form-unit">%（剩余为洗糟水）</div>
+        </div>
+      </div>
+      <div class="vol-display">
+        <div class="vol-box mash">
+          <div class="v-label">糖化锅用水 Mash</div>
+          <div class="v-num" id="mashVolNum">90.0</div>
+          <div class="v-unit">升 (L)</div>
+        </div>
+        <div class="vol-box sparge">
+          <div class="v-label">洗糟水 HLT Sparge</div>
+          <div class="v-num" id="spargeVolNum">60.0</div>
+          <div class="v-unit">升 (L)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Source Water -->
+    <div class="card">
+      <div class="sec-title">
+        <div class="sec-icon">💧</div>
+        <div><h2>基础水质输入 <span>Source Water Profile</span></h2></div>
+      </div>
+      <div class="presets">
+        <button class="preset-btn" onclick="setSourcePreset('ro')">🔵 纯RO水（0基准）</button>
+        <button class="preset-btn" onclick="setSourcePreset('soft')">💧 软水</button>
+        <button class="preset-btn" onclick="setSourcePreset('medium')">🌊 中等水</button>
+        <button class="preset-btn" onclick="setSourcePreset('hard')">🪨 硬水</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Ca²⁺ 钙</label>
+          <input type="number" class="form-input" id="srcCa" value="0" min="0">
+          <div class="form-unit">ppm (mg/L)</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mg²⁺ 镁</label>
+          <input type="number" class="form-input" id="srcMg" value="0" min="0">
+          <div class="form-unit">ppm</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cl⁻ 氯</label>
+          <input type="number" class="form-input" id="srcCl" value="0" min="0">
+          <div class="form-unit">ppm</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">SO₄²⁻ 硫酸根</label>
+          <input type="number" class="form-input" id="srcSO4" value="0" min="0">
+          <div class="form-unit">ppm</div>
+        </div>
+      </div>
+      <div class="alert warning" id="overageAlert">
+        ⚠️ 基础水质中部分离子已超过目标值，无法通过添加盐降低（需用RO水稀释）。已自动设为0加量。
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3. TARGET IONS ── -->
+  <div class="card">
+    <div class="sec-title">
+      <div class="sec-icon">🎛️</div>
+      <div><h2>目标离子浓度 <span>Target Ion Profile · PPM 级微调</span></h2></div>
+      <div style="margin-left:auto">
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="btnStyle"  onclick="setTargetMode('style')">风格自动</button>
+          <button class="toggle-btn"        id="btnManual" onclick="setTargetMode('manual')">手动精调</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-grid" id="targetGrid">
+      <div class="form-group">
+        <label class="form-label">Ca²⁺ 钙 <span style="color:var(--text-dim);font-weight:400">(关联产物)</span></label>
+        <input type="number" class="form-input" id="tgtCa" value="100" min="0" disabled>
+        <div class="form-unit accent">参考范围：50–150 ppm</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mg²⁺ 镁</label>
+        <input type="number" class="form-input" id="tgtMg" value="8" min="0" disabled>
+        <div class="form-unit accent">参考范围：5–25 ppm</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cl⁻ 氯</label>
+        <input type="number" class="form-input" id="tgtCl" value="50" min="0" disabled>
+        <div class="form-unit accent">越高 → 麦芽圆润感越强</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">SO₄²⁻ 硫酸根</label>
+        <input type="number" class="form-input" id="tgtSO4" value="200" min="0" disabled>
+        <div class="form-unit accent">越高 → 酒花苦爽感越强</div>
+      </div>
+    </div>
+
+    <div class="alert info" id="targetModeNote">
+      💡 风格自动模式：目标值已从选定风格自动载入。切换「手动精调」可自由修改任意离子目标值。
+    </div>
+  </div>
+
+  <!-- ── 4. RESULTS ── -->
+  <div class="card">
+    <div class="sec-title">
+      <div class="sec-icon">⚖️</div>
+      <div><h2>加盐量计算结果 <span>Salt Addition Results · 全批次 + 两阶段工艺拆分</span></h2></div>
+    </div>
+    <div class="grid-3">
+
+      <!-- Gypsum -->
+      <div class="salt-card gypsum" id="cardGypsum">
+        <div class="salt-icon">🔵</div>
+        <div class="salt-name">石膏</div>
+        <div class="salt-formula">CaSO₄ · 2H₂O</div>
+        <div class="salt-total" id="gypsumTotal">0.0</div>
+        <div class="salt-total-unit">克（全批次总投料）</div>
+        <div class="salt-contributions">
+          <span class="contrib-tag">→ Ca²⁺ +</span>
+          <span class="contrib-tag">→ SO₄²⁻ +</span>
+        </div>
+        <div class="salt-split">
+          <div class="split-item">
+            <div class="s-label">糖化锅</div>
+            <div class="s-val" id="gypsumMash">0.0</div>
+            <div class="s-unit">g</div>
+          </div>
+          <div class="split-item">
+            <div class="s-label">洗糟水</div>
+            <div class="s-val" id="gypsumSparge">0.0</div>
+            <div class="s-unit">g</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CaCl2 -->
+      <div class="salt-card cacl2" id="cardCacl2">
+        <div class="salt-icon">🟣</div>
+        <div class="salt-name">氯化钙</div>
+        <div class="salt-formula">CaCl₂ · 2H₂O</div>
+        <div class="salt-total" id="cacl2Total">0.0</div>
+        <div class="salt-total-unit">克（全批次总投料）</div>
+        <div class="salt-contributions">
+          <span class="contrib-tag">→ Ca²⁺ +</span>
+          <span class="contrib-tag">→ Cl⁻ +</span>
+        </div>
+        <div class="salt-split">
+          <div class="split-item">
+            <div class="s-label">糖化锅</div>
+            <div class="s-val" id="cacl2Mash">0.0</div>
+            <div class="s-unit">g</div>
+          </div>
+          <div class="split-item">
+            <div class="s-label">洗糟水</div>
+            <div class="s-val" id="cacl2Sparge">0.0</div>
+            <div class="s-unit">g</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Epsom -->
+      <div class="salt-card epsom" id="cardEpsom">
+        <div class="salt-icon">🟢</div>
+        <div class="salt-name">泻盐</div>
+        <div class="salt-formula">MgSO₄ · 7H₂O</div>
+        <div class="salt-total" id="epsomTotal">0.0</div>
+        <div class="salt-total-unit">克（全批次总投料）</div>
+        <div class="salt-contributions">
+          <span class="contrib-tag">→ Mg²⁺ +</span>
+          <span class="contrib-tag">→ SO₄²⁻ +（自动扣减）</span>
+        </div>
+        <div class="salt-split">
+          <div class="split-item">
+            <div class="s-label">糖化锅</div>
+            <div class="s-val" id="epsomMash">0.0</div>
+            <div class="s-unit">g</div>
+          </div>
+          <div class="split-item">
+            <div class="s-label">洗糟水</div>
+            <div class="s-val" id="epsomSparge">0.0</div>
+            <div class="s-unit">g</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── 5. QUALITY CONTROL ── -->
+  <div class="card">
+    <div class="sec-title">
+      <div class="sec-icon">📊</div>
+      <div><h2>实时品质监控 <span>Quality Control · 风味方向 + 离子健康预测</span></h2></div>
+    </div>
+
+    <div class="qc-grid">
+      <!-- SO4/Cl Ratio -->
+      <div class="qc-box">
+        <div class="qc-label">SO₄²⁻ / Cl⁻ 风味方向比</div>
+        <div class="ratio-center">
+          <div class="ratio-num" id="ratioNum">—</div>
+          <div class="ratio-desc" id="ratioDesc">—</div>
+        </div>
+        <div class="ratio-bar">
+          <div class="ratio-pin" id="ratioPin" style="left:50%"></div>
+        </div>
+        <div class="ratio-scale">
+          <span>🍯 麦芽圆润 &lt;0.5</span>
+          <span>⚖️ 平衡 ~1.0</span>
+          <span>🌿 酒花苦爽 &gt;2.0</span>
+        </div>
+      </div>
+
+      <!-- Ca Result -->
+      <div class="qc-box">
+        <div class="qc-label">钙离子预测结果（Ca²⁺ 关联产物）</div>
+        <div class="ca-center">
+          <div class="ca-num" id="caNum">—</div>
+          <div class="ca-unit">ppm（预计最终浓度）</div>
+          <div><span class="ca-status good" id="caStatus">— 健康范围 —</span></div>
+        </div>
+        <div class="ca-bar">
+          <div class="ca-pin" id="caPin" style="left:50%"></div>
+        </div>
+        <div class="ca-scale">
+          <span>0</span><span>50</span><span>100</span><span>150</span><span>200+</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Bars -->
+    <div class="profile-title">📈 预计最终离子浓度 vs 目标值对比</div>
+    <div id="profileBars"></div>
+  </div>
+
+  <!-- ── 6. PROCESS GUIDE ── -->
+  <div class="card">
+    <div class="sec-title">
+      <div class="sec-icon">📋</div>
+      <div><h2>生产操作指引 <span>德式两锅三器 · 两阶段投料方案</span></h2></div>
+    </div>
+    <div class="process-grid">
+      <div class="process-step step-1">
+        <div class="step-num">1</div>
+        <div class="step-title">第一阶段：糖化锅 (Mash Tun)</div>
+        <div class="step-desc">
+          投料前，将下列盐类加入糖化热水中，充分搅拌至完全溶解。待水温均匀稳定后再投入麦芽，开始糖化。
+        </div>
+        <div class="step-salt-list" id="mashGuide"></div>
+        <div class="step-water">糖化用水：<span id="mashVolGuide">—</span></div>
+      </div>
+      <div class="process-step step-2">
+        <div class="step-num">2</div>
+        <div class="step-title">第二阶段：热水罐 (HLT Sparge)</div>
+        <div class="step-desc">
+          洗糟前，将下列盐类加入热水罐（HLT）洗糟水中，搅拌均匀。按比例投料确保全批次浓度前后一致。
+        </div>
+        <div class="step-salt-list" id="spargeGuide"></div>
+        <div class="step-water">洗糟用水：<span id="spargeVolGuide">—</span></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end .main -->
+
+<footer>
+  <p>时光酿造所 · Shiguang Brewing Co. &nbsp;|&nbsp; 生产级全离子掌控工作台 v1.0</p>
+  <p>计算数据基于标准离子贡献值，实际效果受水温、pH、蒸发损耗等因素影响，仅供专业酿造参考。</p>
+</footer>
+
+<!-- ═══════════════════ SCRIPT ═══════════════════ -->
+<script>
+
+// ─── DATA: BEER STYLES ───────────────────────────────────────────────────────
+const STYLES = [
+  {
+    id:'west_coast_ipa', emoji:'🌊', name:'美式西海岸IPA', en:'West Coast IPA',
+    desc:'高硫酸根驱动苦爽口感，酒花香气突出，酒体极干。经典加州风格代表。',
+    Ca:[75,120], Mg:[5,15], Cl:[30,80], SO4:[150,250],
+    t:{ Ca:100, Mg:8, Cl:50, SO4:200 }
+  },
+  {
+    id:'neipa', emoji:'☁️', name:'浑浊IPA', en:'NEIPA / Hazy IPA',
+    desc:'高氯塑造柔软圆润酒体，果香浓郁，苦感轻柔丝滑。新英格兰特色。',
+    Ca:[75,120], Mg:[5,15], Cl:[100,200], SO4:[50,100],
+    t:{ Ca:100, Mg:10, Cl:150, SO4:60 }
+  },
+  {
+    id:'czech_pils', emoji:'🇨🇿', name:'捷克皮尔森', en:'Czech Pilsner',
+    desc:'波西米亚超软水，麦芽与酒花微妙平衡，极度清爽干净。',
+    Ca:[20,40], Mg:[3,10], Cl:[10,25], SO4:[10,30],
+    t:{ Ca:30, Mg:6, Cl:15, SO4:20 }
+  },
+  {
+    id:'german_helles', emoji:'🇩🇪', name:'德式清亮拉格', en:'German Helles',
+    desc:'慕尼黑软水，麦香主导，酒花轻柔点缀。干净圆润清爽。',
+    Ca:[40,70], Mg:[5,12], Cl:[30,55], SO4:[30,55],
+    t:{ Ca:50, Mg:8, Cl:40, SO4:40 }
+  },
+  {
+    id:'new_world_lager', emoji:'🌏', name:'新世界拉格', en:'New World Lager',
+    desc:'融合现代酒花香气与拉格清爽，SO₄/Cl比例精准控制干爽感。',
+    Ca:[50,80], Mg:[4,10], Cl:[30,50], SO4:[60,100],
+    t:{ Ca:60, Mg:8, Cl:40, SO4:80 }
+  },
+  {
+    id:'hefeweizen', emoji:'🍋', name:'德式小麦', en:'Hefeweizen',
+    desc:'超软水突出香蕉丁香酵母风味，水质轻柔不干扰发酵特性。',
+    Ca:[40,70], Mg:[5,15], Cl:[20,45], SO4:[20,45],
+    t:{ Ca:50, Mg:10, Cl:30, SO4:30 }
+  },
+  {
+    id:'kolsch', emoji:'🏙️', name:'科隆啤酒', en:'Kölsch',
+    desc:'清爽干净，拉格与艾尔之间，水质轻柔，酒花清香。科隆特产。',
+    Ca:[40,70], Mg:[5,12], Cl:[25,45], SO4:[25,45],
+    t:{ Ca:50, Mg:8, Cl:30, SO4:30 }
+  },
+  {
+    id:'saison', emoji:'🌾', name:'比利时赛松', en:'Belgian Saison',
+    desc:'果酯酚类为主，硫酸根适中强调干爽，清爽活泼辛辣。',
+    Ca:[60,100], Mg:[5,15], Cl:[20,40], SO4:[60,100],
+    t:{ Ca:75, Mg:8, Cl:25, SO4:75 }
+  },
+  {
+    id:'english_bitter', emoji:'🏴󠁧󠁢󠁥󠁮󠁧󠁿', name:'英式苦啤', en:'English Bitter',
+    desc:'高钙高硫矿物质感强，英式酒花土质香，麦芽苦感完美平衡。',
+    Ca:[80,130], Mg:[10,20], Cl:[60,100], SO4:[100,200],
+    t:{ Ca:100, Mg:15, Cl:75, SO4:150 }
+  },
+  {
+    id:'american_pale', emoji:'🇺🇸', name:'美式淡色艾尔', en:'American Pale Ale',
+    desc:'美国啤酒花主导，酒花香气清爽，麦芽轻甜，水质适中。',
+    Ca:[60,100], Mg:[5,10], Cl:[40,70], SO4:[80,130],
+    t:{ Ca:75, Mg:5, Cl:50, SO4:100 }
+  },
+  {
+    id:'dipa', emoji:'💪', name:'双料IPA', en:'Double IPA',
+    desc:'超高硫酸根追求极致苦爽，酒花层次极其复杂，酒体饱满。',
+    Ca:[90,130], Mg:[5,15], Cl:[50,100], SO4:[200,300],
+    t:{ Ca:110, Mg:8, Cl:75, SO4:250 }
+  },
+  {
+    id:'brut_ipa', emoji:'🥂', name:'Brut IPA', en:'Brut IPA',
+    desc:'极干爽超低终糖，高硫酸根，苦感尖锐如香槟干爽。',
+    Ca:[80,120], Mg:[5,10], Cl:[30,60], SO4:[150,250],
+    t:{ Ca:100, Mg:5, Cl:40, SO4:200 }
+  },
+  {
+    id:'stout', emoji:'⬛', name:'爱尔兰世涛', en:'Irish Stout',
+    desc:'低硫低氯突出烤麦芽苦感，都柏林水质孕育的丝滑口感。',
+    Ca:[80,120], Mg:[10,20], Cl:[60,90], SO4:[40,80],
+    t:{ Ca:100, Mg:15, Cl:75, SO4:60 }
+  },
+  {
+    id:'milk_stout', emoji:'🥛', name:'牛奶世涛', en:'Milk Stout',
+    desc:'乳糖增加甜感，高氯强化圆润丝滑，烤麦芽香气浓郁。',
+    Ca:[75,110], Mg:[5,15], Cl:[100,150], SO4:[30,70],
+    t:{ Ca:90, Mg:10, Cl:120, SO4:50 }
+  },
+  {
+    id:'porter', emoji:'🔷', name:'英式波特', en:'English Porter',
+    desc:'深色麦芽带可可咖啡风味，硫酸根适中，口感饱满复杂。',
+    Ca:[80,120], Mg:[10,20], Cl:[60,90], SO4:[60,100],
+    t:{ Ca:100, Mg:15, Cl:75, SO4:75 }
+  },
+  {
+    id:'munich_dunkel', emoji:'🍂', name:'慕尼黑深色拉格', en:'Munich Dunkel',
+    desc:'面包麦芽甜香，苦感轻柔，颜色深沉，慕尼黑秋天的味道。',
+    Ca:[60,90], Mg:[8,15], Cl:[40,70], SO4:[40,70],
+    t:{ Ca:75, Mg:10, Cl:50, SO4:50 }
+  },
+  {
+    id:'vienna_lager', emoji:'🇦🇹', name:'维也纳拉格', en:'Vienna Lager',
+    desc:'烤麦香浓郁，苦感柔和平衡，拉格中的贵族。维也纳传统。',
+    Ca:[60,100], Mg:[8,15], Cl:[35,60], SO4:[50,80],
+    t:{ Ca:75, Mg:10, Cl:40, SO4:60 }
+  },
+  {
+    id:'tripel', emoji:'✝️', name:'比利时三料', en:'Belgian Tripel',
+    desc:'高酒精果酯浓郁，酒花苦感适中，修道院风格干爽清雅。',
+    Ca:[60,100], Mg:[5,12], Cl:[20,40], SO4:[60,100],
+    t:{ Ca:75, Mg:8, Cl:25, SO4:75 }
+  },
+  {
+    id:'dubbel', emoji:'🍇', name:'比利时双料', en:'Belgian Dubbel',
+    desc:'深色果干风味略甜，苦感轻柔，修道院经典深色艾尔。',
+    Ca:[60,100], Mg:[8,15], Cl:[40,70], SO4:[40,70],
+    t:{ Ca:75, Mg:10, Cl:50, SO4:50 }
+  },
+  {
+    id:'scottish_ale', emoji:'🏴󠁧󠁢󠁳󠁣󠁴󠁿', name:'苏格兰艾尔', en:'Scottish Ale',
+    desc:'麦芽甜感主导，酒花极轻，低硫强调麦芽圆润，苏格兰特色。',
+    Ca:[50,80], Mg:[8,15], Cl:[50,80], SO4:[25,50],
+    t:{ Ca:60, Mg:10, Cl:60, SO4:30 }
+  },
+  {
+    id:'wee_heavy', emoji:'🥃', name:'苏格兰烈性艾尔', en:'Wee Heavy',
+    desc:'极度麦芽甜，高氯强化圆润厚重，超低硫弱化苦感，陈年潜力强。',
+    Ca:[60,100], Mg:[8,15], Cl:[70,110], SO4:[20,50],
+    t:{ Ca:75, Mg:12, Cl:90, SO4:35 }
+  },
+  {
+    id:'barleywine', emoji:'👑', name:'大麦酒', en:'Barleywine',
+    desc:'高浓度麦芽酒，酒体厚重，陈年后香气复杂，水质适中中性。',
+    Ca:[80,120], Mg:[8,15], Cl:[60,100], SO4:[80,130],
+    t:{ Ca:100, Mg:10, Cl:75, SO4:100 }
+  },
+  {
+    id:'berliner', emoji:'🫧', name:'柏林白啤', en:'Berliner Weisse',
+    desc:'极低矿物质突出乳酸酸感，口感轻盈清爽，柏林传统低酒精。',
+    Ca:[20,50], Mg:[3,8], Cl:[10,30], SO4:[10,30],
+    t:{ Ca:30, Mg:5, Cl:20, SO4:20 }
+  },
+  {
+    id:'fruited_sour', emoji:'🍓', name:'水果酸啤', en:'Fruited Sour',
+    desc:'酸爽果香为主，软水避免矿物感干扰，突出水果风味。',
+    Ca:[30,60], Mg:[3,10], Cl:[20,50], SO4:[20,50],
+    t:{ Ca:40, Mg:5, Cl:30, SO4:30 }
+  },
+  {
+    id:'american_stout', emoji:'🌑', name:'美式世涛', en:'American Stout',
+    desc:'比英式更多酒花，烤麦与酒花苦感并重，口感厚实层次丰富。',
+    Ca:[60,100], Mg:[8,15], Cl:[60,90], SO4:[80,130],
+    t:{ Ca:75, Mg:10, Cl:75, SO4:100 }
+  },
+];
+
+// ─── CHEMISTRY CONSTANTS ─────────────────────────────────────────────────────
+// mg per gram of salt, per liter of water (= ppm per g/L)
+const CHEM = {
+  gypsum: { Ca: 232.8, SO4: 558.0 },  // CaSO4·2H2O  MW=172.17
+  cacl2:  { Ca: 272.6, Cl:  482.3 },  // CaCl2·2H2O  MW=147.01
+  epsom:  { Mg:  98.6, SO4: 389.7 },  // MgSO4·7H2O  MW=246.47
+};
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const S = {
+  styleId:    'west_coast_ipa',
+  mode:       'style',
+  volume:     150,
+  mashRatio:  60,
+  src:  { Ca:0, Mg:0, Cl:0, SO4:0 },
+  tgt:  { Ca:100, Mg:8, Cl:50, SO4:200 },
+};
+
+// ─── CALCULATION ENGINE ───────────────────────────────────────────────────────
+function calc() {
+  const { volume, mashRatio, src, tgt } = S;
+  const mashVol   = volume * (mashRatio / 100);
+  const spargeVol = volume - mashVol;
+
+  // Delta needed (can't go below 0 — can't remove ions with salt)
+  const dMg  = Math.max(0, tgt.Mg  - src.Mg);
+  const dCl  = Math.max(0, tgt.Cl  - src.Cl);
+  const dSO4 = Math.max(0, tgt.SO4 - src.SO4);
+
+  // 1. Epsom satisfies Mg → also contributes SO4 (g per liter)
+  const epsomGpL    = dMg  / CHEM.epsom.Mg;
+  const so4FromEpsom= epsomGpL * CHEM.epsom.SO4;
+
+  // 2. CaCl2 satisfies Cl → also contributes Ca
+  const cacl2GpL    = dCl  / CHEM.cacl2.Cl;
+
+  // 3. Gypsum satisfies *remaining* SO4 after Epsom contribution
+  const remSO4      = Math.max(0, dSO4 - so4FromEpsom);
+  const gypsumGpL   = remSO4 / CHEM.gypsum.SO4;
+
+  // 4. Ca is a byproduct (predicted result)
+  const caFromSalts = gypsumGpL * CHEM.gypsum.Ca + cacl2GpL * CHEM.cacl2.Ca;
+  const caResult    = src.Ca + caFromSalts;
+
+  // Convert g/L → total grams for the whole volume
+  const gypsumTot = gypsumGpL * volume;
+  const cacl2Tot  = cacl2GpL  * volume;
+  const epsomTot  = epsomGpL  * volume;
+
+  const mashFrac  = mashVol / volume;
+  const spargeFrac= spargeVol / volume;
+
+  // Final predicted ion profile
+  const finalCa  = src.Ca  + caFromSalts;
+  const finalMg  = src.Mg  + epsomGpL * CHEM.epsom.Mg;
+  const finalCl  = src.Cl  + cacl2GpL * CHEM.cacl2.Cl;
+  const finalSO4 = src.SO4 + gypsumGpL * CHEM.gypsum.SO4 + epsomGpL * CHEM.epsom.SO4;
+
+  const ratio = finalCl > 0.1 ? finalSO4 / finalCl : (finalSO4 > 0 ? 99 : 1);
+
+  // Overage detection
+  const overage = (src.Ca > tgt.Ca+5) || (src.Mg > tgt.Mg+2) || (src.Cl > tgt.Cl+5) || (src.SO4 > tgt.SO4+5);
+
+  return {
+    mashVol, spargeVol,
+    gypsum: { total:gypsumTot, mash:gypsumTot*mashFrac, sparge:gypsumTot*spargeFrac },
+    cacl2:  { total:cacl2Tot,  mash:cacl2Tot*mashFrac,  sparge:cacl2Tot*spargeFrac  },
+    epsom:  { total:epsomTot,  mash:epsomTot*mashFrac,  sparge:epsomTot*spargeFrac  },
+    caResult, finalCa, finalMg, finalCl, finalSO4, ratio, overage,
+  };
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const fmt  = n => n.toFixed(1);
+const fmtI = n => Math.round(n);
+function set(id, v)   { document.getElementById(id).textContent = v; }
+function setV(id, v)  { document.getElementById(id).value = v; }
+
+function pulse(el) {
+  el.classList.remove('updated');
+  void el.offsetWidth;
+  el.classList.add('updated');
+}
+
+// ─── UI UPDATE ────────────────────────────────────────────────────────────────
+function updateUI() {
+  const r = calc();
+
+  // Volumes
+  set('mashVolNum',   fmt(r.mashVol));
+  set('spargeVolNum', fmt(r.spargeVol));
+  set('mashVolGuide',   fmt(r.mashVol) + ' L');
+  set('spargeVolGuide', fmt(r.spargeVol) + ' L');
+
+  // Salt results
+  const salts = ['gypsum','cacl2','epsom'];
+  salts.forEach(s => {
+    set(s+'Total',  fmt(r[s].total));
+    set(s+'Mash',   fmt(r[s].mash));
+    set(s+'Sparge', fmt(r[s].sparge));
+    pulse(document.getElementById('card' + s.charAt(0).toUpperCase() + s.slice(1)));
+  });
+
+  // SO4/Cl ratio
+  const ratio = r.ratio;
+  let ratioText, ratioPos;
+  if      (ratio < 0.5)  { ratioText = '🍯 麦芽主导（圆润甜美）';     ratioPos = 8; }
+  else if (ratio < 0.8)  { ratioText = '偏麦芽（柔和圆润）';           ratioPos = 25; }
+  else if (ratio < 1.2)  { ratioText = '⚖️ 酒花麦芽完美平衡';         ratioPos = 45; }
+  else if (ratio < 1.8)  { ratioText = '偏酒花（清爽微苦）';           ratioPos = 60; }
+  else if (ratio < 3.0)  { ratioText = '🌿 酒花主导（干爽苦冽）';     ratioPos = 75; }
+  else                   { ratioText = '⚡ 极致酒花（锋芒毕露）';      ratioPos = 92; }
+  ratioPos = Math.max(5, Math.min(95, ratioPos));
+
+  set('ratioNum',  ratio > 50 ? '∞' : ratio.toFixed(2));
+  set('ratioDesc', ratioText);
+  document.getElementById('ratioPin').style.left = ratioPos + '%';
+
+  // Ca result
+  const ca = r.caResult;
+  set('caNum', fmtI(ca));
+  let caClass, caText, caColor;
+  if      (ca < 30)  { caClass='danger';  caText='⚠ 过低(<30) 酵母健康风险';    caColor='#ef4444'; }
+  else if (ca < 50)  { caClass='warning'; caText='⚡ 偏低(30–50) 建议适量增加'; caColor='#f59e0b'; }
+  else if (ca <= 150){ caClass='good';    caText='✓ 健康范围 (50–150 ppm)';      caColor='#10b981'; }
+  else if (ca <= 200){ caClass='warning'; caText='⚡ 偏高(150–200) 注意草酸钙'; caColor='#f59e0b'; }
+  else               { caClass='danger';  caText='⚠ 过高(>200) 可能影响苦感';   caColor='#ef4444'; }
+
+  const caEl = document.getElementById('caNum');
+  caEl.style.color = caColor;
+  const caStat = document.getElementById('caStatus');
+  caStat.className = 'ca-status ' + caClass;
+  caStat.textContent = caText;
+
+  const caPos = Math.max(3, Math.min(97, (ca / 220) * 100));
+  document.getElementById('caPin').style.left = caPos + '%';
+
+  // Overage alert
+  document.getElementById('overageAlert').style.display = r.overage ? 'flex' : 'none';
+
+  // Profile bars
+  renderProfileBars(r);
+
+  // Process guide
+  renderProcessGuide(r);
+}
+
+function renderProfileBars(r) {
+  const ions = [
+    { label:'Ca²⁺', val:r.finalCa,  tgt:S.tgt.Ca,  max:220, color:'#f59e0b' },
+    { label:'Mg²⁺', val:r.finalMg,  tgt:S.tgt.Mg,  max:50,  color:'#34d399' },
+    { label:'Cl⁻',  val:r.finalCl,  tgt:S.tgt.Cl,  max:260, color:'#a78bfa' },
+    { label:'SO₄²⁻',val:r.finalSO4, tgt:S.tgt.SO4, max:350, color:'#60a5fa' },
+  ];
+
+  document.getElementById('profileBars').innerHTML = ions.map(ion => {
+    const fillPct   = Math.min(100, (ion.val / ion.max) * 100);
+    const targetPct = Math.min(100, (ion.tgt / ion.max) * 100);
+    const diff      = ion.val - ion.tgt;
+    const absDiff   = Math.abs(diff);
+    const diffColor = absDiff < 5 ? '#10b981' : absDiff < 20 ? '#f59e0b' : '#ef4444';
+    const diffStr   = (diff >= 0 ? '+' : '') + fmtI(diff);
+
+    return `<div class="profile-row">
+      <div class="profile-ion">${ion.label}</div>
+      <div class="p-track">
+        <div class="p-fill" style="width:${fillPct}%;background:${ion.color};opacity:.75"></div>
+        <div class="p-target-line" style="left:${targetPct}%;background:${ion.color}"></div>
+      </div>
+      <div class="profile-val" style="color:${ion.color}">
+        ${fmtI(ion.val)} <span class="profile-diff" style="color:${diffColor}">(${diffStr})</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderProcessGuide(r) {
+  const names = {
+    gypsum: '石膏 (CaSO₄·2H₂O)',
+    cacl2:  '氯化钙 (CaCl₂·2H₂O)',
+    epsom:  '泻盐 (MgSO₄·7H₂O)',
+  };
+
+  ['mash','sparge'].forEach(stage => {
+    const el = document.getElementById(stage + 'Guide');
+    el.innerHTML = ['gypsum','cacl2','epsom'].map(salt => `
+      <div class="step-salt-row">
+        <span class="ss-name">${names[salt]}</span>
+        <span class="ss-val">${fmt(r[salt][stage])} g</span>
+      </div>
+    `).join('');
+  });
+}
+
+// ─── STYLE GRID ───────────────────────────────────────────────────────────────
+function renderStyleGrid() {
+  document.getElementById('styleGrid').innerHTML = STYLES.map(s =>
+    `<div class="style-card${s.id === S.styleId ? ' active' : ''}" onclick="selectStyle('${s.id}')">
+      <div class="s-emoji">${s.emoji}</div>
+      <div class="s-name">${s.name}</div>
+      <div class="s-en">${s.en}</div>
+    </div>`
+  ).join('');
+}
+
+function renderStyleDetail(style) {
+  const ions = [
+    { label:'Ca²⁺ 钙',    range:style.Ca, tgt:style.t.Ca,  max:200 },
+    { label:'Mg²⁺ 镁',    range:style.Mg, tgt:style.t.Mg,  max:50  },
+    { label:'Cl⁻ 氯',     range:style.Cl, tgt:style.t.Cl,  max:250 },
+    { label:'SO₄²⁻ 硫酸根', range:style.SO4, tgt:style.t.SO4, max:350 },
+  ];
+
+  document.getElementById('styleDetail').innerHTML = `
+    <div class="style-detail-head">
+      <div class="big-emoji">${style.emoji}</div>
+      <div>
+        <div class="title">${style.name}</div>
+        <div class="en-name">${style.en}</div>
+        <div class="desc">${style.desc}</div>
+      </div>
+    </div>
+    <div class="style-ion-grid">
+      ${ions.map(ion => {
+        const minP = (ion.range[0]/ion.max)*100;
+        const maxP = (ion.range[1]/ion.max)*100;
+        const tgtP = (ion.tgt/ion.max)*100;
+        return `<div class="style-ion-item">
+          <div class="style-ion-label">${ion.label}</div>
+          <div class="range-track">
+            <div class="range-fill" style="left:${minP}%;width:${maxP-minP}%"></div>
+            <div class="range-dot"  style="left:${tgtP}%"></div>
+          </div>
+          <div class="style-ion-range">${ion.range[0]}–${ion.range[1]} ppm</div>
+          <div class="style-ion-target">推荐目标：<span>${ion.tgt} ppm</span></div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function selectStyle(id) {
+  S.styleId = id;
+  const style = STYLES.find(s => s.id === id);
+  if (!style) return;
+
+  document.querySelectorAll('.style-card').forEach(el => el.classList.remove('active'));
+  const activeEl = document.querySelector(`.style-card[onclick="selectStyle('${id}')"]`);
+  if (activeEl) activeEl.classList.add('active');
+
+  renderStyleDetail(style);
+
+  if (S.mode === 'style') {
+    S.tgt = { ...style.t };
+    syncTargetInputs();
+  }
+  updateUI();
+}
+
+// ─── TARGET MODE ──────────────────────────────────────────────────────────────
+function setTargetMode(mode) {
+  S.mode = mode;
+  document.getElementById('btnStyle').classList.toggle('active',  mode === 'style');
+  document.getElementById('btnManual').classList.toggle('active', mode === 'manual');
+
+  const inputs = document.querySelectorAll('#targetGrid input');
+  inputs.forEach(inp => { inp.disabled = (mode === 'style'); });
+
+  const note = document.getElementById('targetModeNote');
+  if (mode === 'style') {
+    note.className = 'alert info';
+    note.textContent = '💡 风格自动模式：目标值已从选定风格自动载入。切换「手动精调」可自由修改任意离子目标值。';
+    const style = STYLES.find(s => s.id === S.styleId);
+    if (style) { S.tgt = { ...style.t }; syncTargetInputs(); }
+  } else {
+    note.className = 'alert warning';
+    note.textContent = '✏️ 手动精调模式：直接输入目标离子 PPM 值，系统实时反向计算加盐量。Ca²⁺ 为关联产物，由加盐结果决定，无需手动设定。';
+  }
+  updateUI();
+}
+
+function syncTargetInputs() {
+  setV('tgtCa',  S.tgt.Ca);
+  setV('tgtMg',  S.tgt.Mg);
+  setV('tgtCl',  S.tgt.Cl);
+  setV('tgtSO4', S.tgt.SO4);
+}
+
+// ─── SOURCE PRESETS ───────────────────────────────────────────────────────────
+function setSourcePreset(p) {
+  const presets = {
+    ro:     { Ca:0,   Mg:0,  Cl:0,  SO4:0  },
+    soft:   { Ca:20,  Mg:3,  Cl:10, SO4:12 },
+    medium: { Ca:55,  Mg:8,  Cl:30, SO4:45 },
+    hard:   { Ca:110, Mg:18, Cl:65, SO4:90 },
+  };
+  const d = presets[p]; if (!d) return;
+  S.src = { ...d };
+  setV('srcCa', d.Ca); setV('srcMg', d.Mg);
+  setV('srcCl', d.Cl); setV('srcSO4', d.SO4);
+  updateUI();
+}
+
+// ─── INPUT BINDINGS ───────────────────────────────────────────────────────────
+function bindInputs() {
+  document.getElementById('totalVolume').addEventListener('input', e => {
+    S.volume = parseFloat(e.target.value) || 1; updateUI();
+  });
+  document.getElementById('mashRatio').addEventListener('input', e => {
+    S.mashRatio = Math.min(90, Math.max(10, parseFloat(e.target.value) || 60)); updateUI();
+  });
+  ['Ca','Mg','Cl','SO4'].forEach(ion => {
+    document.getElementById('src'+ion).addEventListener('input', e => {
+      S.src[ion] = parseFloat(e.target.value) || 0; updateUI();
+    });
+    document.getElementById('tgt'+ion).addEventListener('input', e => {
+      if (S.mode === 'manual') { S.tgt[ion] = parseFloat(e.target.value) || 0; updateUI(); }
+    });
+  });
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function init() {
+  renderStyleGrid();
+  const defStyle = STYLES.find(s => s.id === S.styleId);
+  if (defStyle) {
+    S.tgt = { ...defStyle.t };
+    syncTargetInputs();
+    renderStyleDetail(defStyle);
+  }
+  document.querySelectorAll('#targetGrid input').forEach(inp => { inp.disabled = true; });
+  bindInputs();
+  updateUI();
+}
+
+init();
+</script>
+</body>
+</html>
