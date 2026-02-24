@@ -264,7 +264,7 @@
         <label class="fg-label">💀 底水</label>
         <input type="number" class="fi" id="eDeadSpace" value="10" min="0"
                oninput="S.recipe.deadSpace=+this.value;recalc()">
-        <div class="fi-unit">升 (L) · 假底死角</div>
+        <div class="fi-unit">升 (L) · 过滤/旋沉槽死角，不可回收</div>
       </div>
       <div class="fg-group">
         <label class="fg-label">⚡ 糖化效率</label>
@@ -616,16 +616,17 @@ function totalVol() {
 }
 
 function calcWater() {
+  // 德式两锅三器：底水 = 过滤/旋沉槽死角损耗，不回收
   const G  = S.grains.reduce((s, g) => s + g.kg, 0);
   const R  = S.recipe.grainRatio      || 3.5;
   const A  = S.recipe.grainAbsorption || 1.0;
   const E  = Math.min(S.recipe.evapRate || 10, 99) / 100;
   const F  = S.recipe.fermenterVol;
   const L  = S.recipe.deadSpace || 0;
-  const mashVol      = G * R + L;
+  const mashVol      = G * R;
   const headRunnings = mashVol - G * A;
   const preboilVol   = F / (1 - E);
-  const spargeVol    = Math.max(0, preboilVol - headRunnings);
+  const spargeVol    = Math.max(0, preboilVol + L - headRunnings);
   return { mashVol, spargeVol, total: mashVol + spargeVol, grainKg: G };
 }
 

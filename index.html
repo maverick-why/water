@@ -404,7 +404,7 @@
         <div class="form-group">
           <label class="form-label">💀 底水损耗</label>
           <input type="number" class="form-input" id="otherLoss" value="10" min="0" max="500">
-          <div class="form-unit">升 (L) · 管道死角 + 酒花吸收等</div>
+          <div class="form-unit">升 (L) · 过滤/旋沉槽死角，不可回收</div>
         </div>
         <div class="form-group">
           <label class="form-label">🌾 谷物吸水率</label>
@@ -422,7 +422,7 @@
         <div class="form-group">
           <label class="form-label">🌾 谷物总重</label>
           <input type="number" class="form-input" id="grainKg" value="30" min="1" max="5000">
-          <div class="form-unit">kg · 糖化水 = 谷物×<span id="grainRatioHint2" style="color:var(--accent-light);font-weight:700">3.5</span> + 底水</div>
+          <div class="form-unit">kg · 糖化水 = 谷物 × <span id="grainRatioHint2" style="color:var(--accent-light);font-weight:700">3.5</span> L/kg</div>
         </div>
       </div>
 
@@ -436,7 +436,7 @@
           <span id="fFermenter" class="hi">—</span> 进罐
           + <span id="fBoil" class="hi">—</span> 蒸发
           + <span id="fGrainAbs" class="hi">—</span> 谷物吸水
-          + <span id="fOther" class="hi">—</span> 底水
+          + <span id="fOther" class="hi">—</span> 底水损耗
           = <span id="fTotal" class="hi">—</span> L 总投水
         </div>
         <div class="vol-row-split">
@@ -734,26 +734,26 @@ const S = {
   tgt: { Ca:100, Mg:8, Cl:50, SO4:200 },
 };
 
-// Material balance (correct):
-//   mash_water    = grain_kg × R + 底水
+// Material balance — 德式两锅三器（糖化/煮沸一锅，过滤/旋沉一锅）:
+//   底水 = 过滤旋沉槽死角损耗（不回收）
+//   mash_water    = grain_kg × R          （糖化鍋，不含底水）
 //   head_runnings = mash_water - grain_kg × A
-//   pre_boil      = F / (1 - E)
-//   sparge        = pre_boil - head_runnings
+//   pre_boil      = F / (1 - E)           （目标煮前体积）
+//   sparge        = pre_boil + L - head_runnings  （需补偿底水损耗）
 //   total         = mash_water + sparge
-// where E=evapRate, A=grainAbsorption, R=grainRatio, F=fermenterVol
 function syncVolumes() {
   const E = Math.min(S.evapRate, 99) / 100;
   const A = S.grainAbsorption;
   const R = S.grainRatio;
   const F = S.fermenterVol;
-  const L = S.otherLoss;   // 底水 — lauter dead space added to mash
+  const L = S.otherLoss;   // 底水 — 过滤/旋沉槽死角，不可回收
   const G = S.grainKg;
 
-  const mashVol      = G * R + L;
+  const mashVol      = G * R;
   const grainAbs     = G * A;
   const headRunnings = mashVol - grainAbs;
   const preboilVol   = E < 1 ? F / (1 - E) : F * 2;
-  const spargeVol    = Math.max(0, preboilVol - headRunnings);
+  const spargeVol    = Math.max(0, preboilVol + L - headRunnings);
   const evapVol      = preboilVol * E;
   const T            = mashVol + spargeVol;
 
